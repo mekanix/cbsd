@@ -1,5 +1,4 @@
 PREFIX?=/usr/local
-CC?=/usr/bin/cc
 CBSD_HOME=${PREFIX}/cbsd
 STRIP="/usr/bin/strip"
 RM="/bin/rm"
@@ -14,6 +13,7 @@ DUMPCPUTOPOLOGYOBJECT = misc/src/dump_cpu_topology.o
 DUMPISCSIDISCOVERYOBJECT = misc/src/dump_iscsi_discovery.o
 
 all:	cbsd dump_cpu_topology dump_iscsi_discovery
+	@${MAKE} ${MAKEFLAGS} -C sock
 
 clean:
 	${MAKE} -C bin/cbsdsh clean
@@ -104,3 +104,5 @@ install:
 	${INSTALL} man/cbsd.8 ${DESTDIR}${PREFIX}/man/man8/cbsd.8
 	${ENV} BINDIR=${PREFIX}/bin ${MAKE} -C bin/cbsdsh install
 	${MAKE} -C share/bsdconfig/cbsd install
+
+.include <bsd.prog.mk>
