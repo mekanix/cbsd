@@ -1,5 +1,9 @@
+.depend
+*.full
+*.debug
 *.o
-sock/sock
+sock/daemon/cbsdd
+sock/shell/cbsdsh
 bin/cbsdsftp
 bin/cbsdsftp6
 bin/cbsdsh/.depend
@@ -38,4 +42,3 @@ tools/nic_info
 tools/racct-statsd
 tools/select_jail
 tools/vale-ctl
-
