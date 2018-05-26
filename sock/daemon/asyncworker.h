@@ -1,7 +1,7 @@
 #pragma once
 
 #include <thread>
-#include <deque>
+#include <list>
 #include <mutex>
 #include <condition_variable>
 
@@ -11,7 +11,7 @@ class AsyncWorker {
     AsyncWorker(const int &client);
     ~AsyncWorker();
 
-    static std::deque<AsyncWorker *> finished;
+    static std::list<AsyncWorker *> finished;
     static void removeFinished();
     static void terminate();
     static void wait();

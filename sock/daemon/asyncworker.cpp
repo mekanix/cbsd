@@ -7,8 +7,8 @@
 bool AsyncWorker::quit = false;
 std::mutex AsyncWorker::mutex;
 std::condition_variable AsyncWorker::condition;
-std::deque<AsyncWorker *> AsyncWorker::finished;
-auto finishedThread = std::thread(&AsyncWorker::removeFinished);
+std::list<AsyncWorker *> AsyncWorker::finished;
+static auto finishedThread = std::thread(&AsyncWorker::removeFinished);
 
 
 AsyncWorker::AsyncWorker(const int &cl)
