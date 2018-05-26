@@ -24,6 +24,7 @@ To support multiple clients synchronization, at least ID of the message is requi
 * there are two clients connected
 * both of them are creating a jail
 * one of them wants to get output of both jail creation scripts
+
 In this case, every message going out from server should contain ID, except special ones, like notifying clients that server is going down, etc. Example of a message:
 `<id> <type> <size> <payload>`
 
