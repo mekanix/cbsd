@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -28,7 +29,7 @@ Shell::Shell(const std::string &socket_path)
 
   if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1)
   {
-    perror("connect error");
+    std::cerr << strerror(errno) << std::endl;
     exit(-1);
   }
 }
@@ -42,10 +43,11 @@ Shell::~Shell()
 
 int Shell::put(const std::string &data)
 {
-  if (write(fd, data.data(), data.size()) != data.size())
+  auto sentSize = send(fd, data.data(), data.size(), MSG_NOSIGNAL);
+  if (sentSize < 0)
   {
-    perror("write error");
-    exit(-1);
+    std::cerr << "Server exited. Quiting!" << std::endl;
+    exit(0);
   }
   return 0;
 }

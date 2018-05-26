@@ -25,7 +25,14 @@ int main()
   while(1)
   {
     auto client = s.waitForClient();
-    new AsyncWorker(client);
+    if (client != -1)
+    {
+      new AsyncWorker(client);
+    }
+    else
+    {
+      std::cerr << "Error accepting client!" << std::endl;
+    }
   }
   return 0;
 }

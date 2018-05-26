@@ -64,7 +64,7 @@ const int Socket::waitForClient()
   if ((client = accept(fd, NULL, NULL)) == -1) {
     perror("accept error");
     cleanup();
-    exit(1);
+    return -1;
   }
   return client;
 }
