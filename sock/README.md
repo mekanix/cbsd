@@ -18,7 +18,10 @@ The actual use will involve putting the above code into a threading function on 
 
 ## Protocol
 
-Client to server commands should be as simple as `<command> [args]` which should get reply from server notifying the client what's the `ID` of the command it just executed, so that `ID` will be used when sending the output of the actuall command run by server.
+Client to server commands should be: `<type> <command> [args]` which should get reply from server notifying the client what's the `ID` of the command it just executed, so that `ID` will be used when sending the output of the actuall command run by server.
+* type - "command", "input", etc. in form of `<type name> [type args]`
+* command - one of CBSD commands like scripts in `tools`, import/export of image, etc.
+* args - the same args that CBSD CLI has now?
 
 To support multiple clients synchronization, at least ID of the message is required. Let's assume following use case:
 * there are two clients connected
