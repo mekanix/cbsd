@@ -21,6 +21,7 @@ AsyncWorker::AsyncWorker(const int &cl)
 AsyncWorker::~AsyncWorker()
 {
   t.join();
+  cleanup();
 }
 
 
@@ -71,8 +72,10 @@ void AsyncWorker::process()
 void AsyncWorker::_process()
 {
   process();
-  std::unique_lock<std::mutex> lock(mutex);
-  finished.push_back(this);
+  {
+    std::unique_lock<std::mutex> lock(mutex);
+    finished.push_back(this);
+  }
   condition.notify_one();
 }
 
@@ -102,8 +105,10 @@ void AsyncWorker::removeFinished()
 void AsyncWorker::terminate()
 {
   quit = true;
-  std::unique_lock<std::mutex> lock(mutex);
-  finished.push_back(nullptr);
+  {
+    std::unique_lock<std::mutex> lock(mutex);
+    finished.push_back(nullptr);
+  }
   condition.notify_all();
 }
 

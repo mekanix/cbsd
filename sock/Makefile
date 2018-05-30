@@ -9,3 +9,9 @@ clean:
 cleandir:
 	@${MAKE} ${MAKEFLAGS} -C daemon cleandir
 	@${MAKE} ${MAKEFLAGS} -C shell cleandir
+
+prog: prog.cpp message.h
+	c++ -std=c++11 -o prog prog.cpp
+
+cleanprog:
+	rm -rf prog
