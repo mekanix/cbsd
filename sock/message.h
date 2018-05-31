@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 #include <iostream>
 
@@ -5,6 +7,12 @@
 class Message
 {
   public:
+    Message()
+    {
+      id = 0;
+      type = 0;
+      payload = '';
+    }
     Message(const int &_id, const int &_type, const std::string &_payload)
     {
       id = _id;
@@ -38,10 +46,14 @@ class Message
       {
         std::cerr << "Failed to load size" << std::endl;
       }
-      std::cout << size << std::endl;
       ++size;
       char c;
       is.get(c);
+      if (is.fail())
+      {
+        std::cerr << "Failed to load space after size" << std::endl;
+        return is;
+      }
       char buffer[size];
       is.get(buffer, size, '\0');
       if (is.fail())

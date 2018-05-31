@@ -30,4 +30,3 @@ class AsyncWorker {
   private:
     void _process();
 };
-
