@@ -10,7 +10,7 @@ while(1)
   auto clientId = s.waitForClient();
   Message m("some message");
   Client c(clientId);
-  m >> c;
+  c << m;
 }
 ```
 

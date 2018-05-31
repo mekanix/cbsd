@@ -46,7 +46,24 @@ int Shell::put(const std::string &data)
   auto sentSize = send(fd, data.data(), data.size(), MSG_NOSIGNAL);
   if (sentSize < 0)
   {
-    std::cerr << "Server exited. Quiting!" << std::endl;
+    std::cerr << "Error: " << strerror(errno) << std::endl;
+    exit(0);
+  }
+  else if (sentSize == 0)
+  {
+    std::cerr << "Error: socket closed" << std::endl;
+    exit(0);
+  }
+  char buffer[1024];
+  auto receivedSize = recv(fd, buffer, sizeof(buffer), MSG_NOSIGNAL);
+  if (receivedSize < 0)
+  {
+    std::cerr << "Error: " << strerror(errno) << std::endl;
+    exit(0);
+  }
+  else if (receivedSize == 0)
+  {
+    std::cerr << "Error: socket closed" << std::endl;
     exit(0);
   }
   return 0;
