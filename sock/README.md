@@ -37,4 +37,4 @@ Most CBSD commands have similar syntax. To send CBSD specific command to, for ex
 <-- <size> cbsd output ...
 ```
 
-To get the <size>, code should read byte by byte until <space> is found. It should be converted to number of bytes that the rest of the message have, and than that more bytes should be read from socket. The rest is parsing which is specific to client/server and type of command being sent/read.
+To get the \<size>, code should read byte by byte until \<space> is found. It should be converted to number of bytes that the rest of the message have, and than that more bytes should be read from socket. The rest is parsing which is specific to client/server and type of command being sent/read.
