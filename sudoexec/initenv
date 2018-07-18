@@ -265,7 +265,7 @@ phase2()
 			echo "pkg-config must be present on the system to build CBSD from the source. Please install it first: pkg install pkgconf";
 			exit 1
 		fi
-		${CC_CMD} ${distdir}/misc/src/sqlcli.c -static $( pkg-config sqlite3 --cflags --libs --static ) -lm -lc++ -o ${distdir}/misc/sqlcli
+		${CC_CMD} ${distdir}/misc/src/sqlcli.c $( pkg-config sqlite3 --cflags --libs ) -lm -lc++ -o ${distdir}/misc/sqlcli
 	fi
 	installne "-s -o ${cbsduser} -g ${cbsduser} -m 500" ${distdir}/misc/sqlcli ${miscdir}/sqlcli
 	[ -f ${distdir}/misc/sqlcli ] && /bin/rm -f ${distdir}/misc/sqlcli
@@ -440,6 +440,7 @@ EOF
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/nodes.subr ${workdir}/nodes.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/strings.subr ${workdir}/strings.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/rcconf.subr ${workdir}/rcconf.subr
+	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/rrcconf.subr ${workdir}/rrcconf.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/vnet.subr ${workdir}/vnet.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/vnet-tui.subr ${workdir}/vnet-tui.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/emulator.subr ${workdir}/emulator.subr
@@ -470,6 +471,7 @@ EOF
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/xen.conf ${sharedir}/xen.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/zrep.conf ${sharedir}/zrep.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/bhyvedsk.conf ${sharedir}/bhyvedsk.conf
+	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/bhyve_dskcontroller.conf ${sharedir}/bhyve_dskcontroller.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/bhyvenic.conf ${sharedir}/bhyvenic.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/virtualboxdsk.conf ${sharedir}/virtualboxdsk.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/virtualboxnic.conf ${sharedir}/virtualboxnic.conf
@@ -497,6 +499,7 @@ EOF
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-storage_media_map.schema ${sharedir}/local-storage_media_map.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyve.schema ${sharedir}/local-bhyve.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyvedsk.schema ${sharedir}/local-bhyvedsk.schema
+	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyve-dskcontroller.schema ${sharedir}/local-bhyve-dskcontroller.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyvenic.schema ${sharedir}/local-bhyvenic.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-jailnic.schema ${sharedir}/local-jailnic.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyveppt.schema ${sharedir}/local-bhyveppt.schema
@@ -664,8 +667,6 @@ phase5()
 	/usr/local/bin/cbsd ${miscdir}/updatesql ${dbdir}/inv.${nodename}.sqlite ${distdir}/share/local-bhyve.schema bhyve
 	/usr/local/bin/cbsd ${miscdir}/updatesql ${dbdir}/inv.${nodename}.sqlite ${distdir}/share/local-bhyveppt.schema bhyveppt
 	/usr/local/bin/cbsd ${miscdir}/updatesql ${dbdir}/inv.${nodename}.sqlite ${distdir}/share/local-virtualbox.schema virtualbox
-	/usr/local/bin/cbsd ${miscdir}/updatesql ${dbdir}/inv.${nodename}.sqlite ${distdir}/share/local-virtualboxdsk.schema virtualboxdsk
-	/usr/local/bin/cbsd ${miscdir}/updatesql ${dbdir}/inv.${nodename}.sqlite ${distdir}/share/local-virtualboxnic.schema virtualboxnic
 	/usr/local/bin/cbsd ${miscdir}/updatesql ${dbdir}/inv.${nodename}.sqlite ${distdir}/share/local-xen.schema xen
 	/usr/local/bin/cbsd ${miscdir}/updatesql ${dbdir}/inv.${nodename}.sqlite ${distdir}/share/local-vnetnic.schema vnetnic
 	/usr/local/bin/cbsd ${miscdir}/updatesql ${dbdir}/inv.${nodename}.sqlite ${distdir}/share/local-vmpackages.schema vmpackages
