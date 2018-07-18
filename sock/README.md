@@ -10,7 +10,7 @@ while(1)
   auto clientId = s.waitForClient();
   Message m("some message");
   Client c(clientId);
-  c << m;
+  c >> m;
 }
 ```
 
@@ -18,22 +18,23 @@ The actual use will involve putting the above code into a threading function on 
 
 ## Protocol
 
-Client to server commands should be: `<type> <command> [args]` which should get reply from server notifying the client what's the `ID` of the command it just executed, so that `ID` will be used when sending the output of the actuall command run by server.
-* type - "command", "input", etc. in form of `<type name> [type args]`
-* command - one of CBSD commands like scripts in `tools`, import/export of image, etc.
-* args - the same args that CBSD CLI has now?
+To denotify message dirrection, in the documentation the following arrows will be used:
 
-To support multiple clients synchronization, at least ID of the message is required. Let's assume following use case:
-* there are two clients connected
-* both of them are creating a jail
-* one of them wants to get output of both jail creation scripts
+* `-->` from client to server
+* `<--` from server to client
 
-In this case, every message going out from server should contain ID, except special ones, like notifying clients that server is going down, etc. Example of a message:
-`<id> <type> <size> <payload>`
+They are not used in the protocol, but are just there to help understanding the messages/protocol.
 
-* id - command ID that this message refers to
-* type - "output", "command", etc.
-* size - size of the attached payload
-* payload - the actual message being sent
+```
+--> <size> <jail name> start
+<-- <size> <jail name> output <payload>
+```
 
-For the long message it is required to be split into multiple message, which should be small enough that `<id> <type> <size> <payload>` can be sent/received in one call. If that can not be guaranteed, our "end of message" marker should be invented.
+Most CBSD commands have similar syntax. To send CBSD specific command to, for example, configure some part of CBSD:
+
+```
+--> <size> cbsd config ...
+<-- <size> cbsd output ...
+```
+
+To get the \<size>, code should read byte by byte until \<space> is found. It should be converted to number of bytes that the rest of the message have, and than that more bytes should be read from socket. The rest is parsing which is specific to client/server and type of command being sent/read.
