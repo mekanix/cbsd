@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iostream>
 #include <map>
+#include <replxx.hxx>
 #include <thread>
 #include <vector>
 
@@ -21,10 +22,12 @@ int main(int argc, char **argv)
   auto stop = app.add_subcommand("stop", "Stop resource");
   stop->add_option("jail", jails, "Jail name")->required();
   CLI11_PARSE(app, argc, argv);
-  Shell s("/tmp/cbsd.sock");
+  // Shell s("/tmp/cbsd.sock");
   if (app.get_subcommands().size() == 0)
   {
     std::cout << "Interactive shell" << std::endl;
+    replxx::Replxx rx;
+    std::string raw_input = rx.input("> ");
   }
   else
   {
