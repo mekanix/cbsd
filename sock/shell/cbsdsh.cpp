@@ -1,5 +1,6 @@
 #include "CLI/CLI.hpp"
-#include "shell.h"
+#include "socket.h"
+#include "message.h"
 
 #include <chrono>
 #include <iostream>
@@ -22,7 +23,7 @@ int main(int argc, char **argv)
   auto stop = app.add_subcommand("stop", "Stop resource");
   stop->add_option("jail", jails, "Jail name")->required();
   CLI11_PARSE(app, argc, argv);
-  // Shell s("/tmp/cbsd.sock");
+  Socket s("/tmp/cbsd.sock");
   if (app.get_subcommands().size() == 0)
   {
     std::cout << "Interactive shell" << std::endl;
@@ -31,12 +32,15 @@ int main(int argc, char **argv)
   }
   else
   {
-    std::cout << app.get_subcommands()[0]->get_name();
+    std::string data = app.get_subcommands()[0]->get_name();
     for (auto jail : jails)
     {
-      std::cout << ' ' << jail;
+      data += ' ';
+      data += jail;
     }
-    std::cout << std::endl;
+    Message m;
+    m.data(0, 0, data);
+    s << m;
   }
   return 0;
 }

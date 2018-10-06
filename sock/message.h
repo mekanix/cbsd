@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <sstream>
 #include <string>
 
 class Message
@@ -14,9 +15,7 @@ public:
   }
   Message(const int &_id, const int &_type, const std::string &_payload)
   {
-    id = _id;
-    type = _type;
-    payload = _payload;
+    data(_id, _type, _payload);
   }
 
   friend std::ostream &operator<<(std::ostream &os, const Message &m)
@@ -64,6 +63,21 @@ public:
     return is;
   }
 
+  std::string data() const
+  {
+    std::stringstream s;
+    s << id << ' ' << type << ' ' << payload;
+    return s.str();
+  }
+
+  void data(const int &_id, const int &_type, const std::string &_payload)
+  {
+    id = _id;
+    type = _type;
+    payload = _payload;
+  }
+
+protected:
   int id;
   int type;
   std::string payload;

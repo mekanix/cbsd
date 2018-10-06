@@ -55,7 +55,7 @@ void AsyncWorker::process()
       buf[rc] = '\0';
     }
     result = buf;
-    std::cout << result << std::flush;
+    std::cout << result << std::endl;
     if (result == "quit")
     {
       kill(getpid(), SIGINT);
