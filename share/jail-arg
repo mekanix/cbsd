@@ -1,3 +1,7 @@
+if [ ! "$_CBSD_SHARE_JARG" ]; then
+_CBSD_SHARE_JARG=1
+###
+
 # all parameters
 JARG="path \
 host_hostname \
@@ -6,6 +10,7 @@ mount_devfs \
 allow_mount \
 allow_devfs \
 allow_nullfs \
+allow_fusefs \
 mount_fstab \
 mkhostsfile \
 devfs_ruleset \
@@ -61,3 +66,6 @@ childrenmax \
 persist \
 enforce_statfs \
 allow_raw_sockets"
+
+###
+fi

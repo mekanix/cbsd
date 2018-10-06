@@ -19,6 +19,7 @@ clean:
 	${MAKE} -C bin/cbsdsh clean
 	${RM} -f bin/cbsdsh/.depend*
 	${RM} -f misc/chk_arp_byip
+	${RM} -f misc/cbsdtee
 	${RM} -f bin/cbsdsftp
 	${RM} -f bin/cbsdsftp6
 	${RM} -f bin/cfetch
@@ -76,10 +77,11 @@ cbsd: pkg-config-check
 	#${CC} misc/src/sqlcli.c -static -pthread -lsqlite3 -lm -L/usr/local/lib -I/usr/local/include -o misc/sqlcli && ${STRIP} misc/sqlcli
 	# ICU?
 	#${CC} misc/src/sqlcli.c -static -pthread -lsqlite3 -lpthread -licui18n -licuuc -licudata -lm -L/usr/local/lib -I/usr/local/include -o misc/sqlcli && ${STRIP} misc/sqlcli
-	${CC} misc/src/sqlcli.c `pkg-config sqlite3 --cflags --libs` -lm -lc++ -o misc/sqlcli && ${STRIP} misc/sqlcli
+	${CC} misc/src/sqlcli.c `pkg-config sqlite3 --cflags --libs` -lm -o misc/sqlcli && ${STRIP} misc/sqlcli
 	${CC} misc/src/cbsdlogtail.c -o misc/cbsdlogtail && ${STRIP} misc/cbsdlogtail
 	${CC} misc/src/pwcrypt.c -lcrypt -o misc/pwcrypt && ${STRIP} misc/pwcrypt
 	${CC} misc/src/chk_arp_byip.c -o misc/chk_arp_byip && ${STRIP} misc/chk_arp_byip
+	${CC} misc/src/cbsdtee.c -o misc/cbsdtee && ${STRIP} misc/cbsdtee
 	${CC} misc/src/elf_tables.c -I/usr/local/include -I/usr/local/include/libelf -L/usr/local/lib -lelf -o misc/elf_tables && ${STRIP} misc/elf_tables
 	${CC} misc/src/conv2human.c -I/usr/local/include -I/usr/local/include/libelf -L/usr/local/lib -lelf -o misc/conv2human -lutil && ${STRIP} misc/conv2human
 	${CC} misc/src/cbsd_fwatch.c -o misc/cbsd_fwatch && ${STRIP} misc/cbsd_fwatch
@@ -95,7 +97,6 @@ cbsd: pkg-config-check
 	${CC} tools/src/select_jail.c -o tools/select_jail && ${STRIP} tools/select_jail
 	${MAKE} -C bin/cbsdsh && ${STRIP} bin/cbsdsh/cbsd
 	${MAKE} -C share/bsdconfig/cbsd
-
 
 install:
 	${MKDIR} -p ${DESTDIR}${PREFIX}/cbsd

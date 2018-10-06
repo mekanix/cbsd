@@ -240,17 +240,13 @@ if [ $# -gt 1 -a -z "${jname}" -o -n "${jail_list}" ]; then
 
 	for jname in ${JLIST}; do
 		[ "${jname}" = "inter=0" ] && continue
-		if [ -n "${cbsd_queue_name}" ]; then
-			/usr/sbin/daemon -p ${ftmpdir}/jstart.${jname}.$$ /usr/local/bin/cbsd jstart inter=0 jname=${jname} cbsd_queue_name="${cbsd_queue_name}"
-		else
-			/usr/sbin/daemon -p ${ftmpdir}/jstart.${jname}.$$ /usr/local/bin/cbsd jstart inter=0 jname=${jname}
-		fi
+		/usr/sbin/daemon -p ${ftmpdir}/jstart.${jname}.$$ /usr/local/bin/cbsd jstart inter=0 jname=${jname}
 		#lets save .pid file
 		sleep 1
 		[ -f "${ftmpdir}/jstart.${jname}.$$" ] && cbsd_pwait --pid=$( /bin/cat ${ftmpdir}/jstart.${jname}.$$ ) --timeout=${parallel}
 	done
 
-	wait_for_fpid start ${parallel}
+	wait_for_fpid -a start -t ${parallel}
 
 	err 0 "${MAGENTA}Multiple jstart: ${GREEN}done${NORMAL}"
 fi
@@ -377,14 +373,37 @@ check_environment_script "tests"
 
 [ ! -r ${jailsysdir}/${jname}/local.sqlite ] && /usr/local/bin/cbsd ${miscdir}/updatesql ${jailsysdir}/${jname}/local.sqlite ${distdir}/share/local-jailnic.schema jailnic
 
-case ${ip4_addr} in
-	[Dd][Hh][Cc][PP])
-		ip4_addr=$( dhcpd )
-		[ $? -eq 2 ] && log_err 1 "${MAGENTA}No free IP address for DHCP in nodeippool${NORMAL}"
-		cbsdlogger NOTICE ${CBSD_APP}: set ip4_addr for ${jname} via DHCP: ${ip4_addr}
-		jset jname=${jname} ip4_addr="${ip4_addr}"
-		;;
-esac
+# check for DHCP in ip4_addr string and replace them by ip
+OIFS="${IFS}"
+IFS=","
+_tmp_ip4_addr=
+_mod=0
+
+for _tmp in ${ip4_addr}; do
+	case ${_tmp} in
+		[Dd][Hh][Cc][PP])
+			_tmp=$( dhcpd )
+			[ $? -eq 2 ] && log_err 1 "${MAGENTA}No free IP address for DHCP in nodeippool${NORMAL}"
+			cbsdlogger NOTICE ${CBSD_APP}: set ip4_addr for ${jname} via DHCP: ${_tmp}
+			_mod=1
+			;;
+		*)
+			;;
+	esac
+
+	if [ -z "${_tmp_ip4_addr}" ]; then
+		_tmp_ip4_addr="${_tmp}"
+	else
+		_tmp_ip4_addr="${_tmp_ip4_addr},${_tmp}"
+	fi
+done
+
+IFS="${OIFS}"
+
+if [ ${_mod} -eq 1 ]; then
+	jset jname=${jname} ip4_addr="${_tmp_ip4_addr}"
+	ip4_addr="${_tmp_ip4_addr}"
+fi
 
 geniplist ${ip4_addr}
 
@@ -662,7 +681,7 @@ FID="/var/run/jail_${UNDHOSTNAME}.id"
 echo ${ST} > ${FID}
 exec_cbsdjail_first_boot
 
-external_exec_script "start.d"
+external_exec_script -s start.d
 external_exec_master_script "master_poststart.d"
 
 get_jid

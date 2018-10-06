@@ -2,7 +2,6 @@
 #v11.1.11
 export distdir=${distdir:-"/usr/local/cbsd"}
 globalconf="${distdir}/cbsd.conf";
-globalconflua="${distdir}/cbsd.lua";
 MYLOCK="/tmp/initenv.lock"
 MYDESC="Node re-initialization"
 MYARG=""
@@ -265,7 +264,7 @@ phase2()
 			echo "pkg-config must be present on the system to build CBSD from the source. Please install it first: pkg install pkgconf";
 			exit 1
 		fi
-		${CC_CMD} ${distdir}/misc/src/sqlcli.c $( pkg-config sqlite3 --cflags --libs ) -lm -lc++ -o ${distdir}/misc/sqlcli
+		${CC_CMD} ${distdir}/misc/src/sqlcli.c $( pkg-config sqlite3 --cflags --libs ) -lm -o ${distdir}/misc/sqlcli
 	fi
 	installne "-s -o ${cbsduser} -g ${cbsduser} -m 500" ${distdir}/misc/sqlcli ${miscdir}/sqlcli
 	[ -f ${distdir}/misc/sqlcli ] && /bin/rm -f ${distdir}/misc/sqlcli
@@ -301,6 +300,10 @@ phase2()
 	[ ! -f "${distdir}/misc/chk_arp_byip" ] && ${CC_CMD} ${distdir}/misc/src/chk_arp_byip.c -o ${distdir}/misc/chk_arp_byip
 	installne "-s -o ${cbsduser} -g ${cbsduser} -m 555" ${distdir}/misc/chk_arp_byip ${miscdir}/chk_arp_byip
 	[ -f ${distdir}/misc/chk_arp_byip ] && /bin/rm -f ${distdir}/misc/chk_arp_byip
+
+	[ ! -f "${distdir}/misc/cbsdtee" ] && ${CC_CMD} ${distdir}/misc/src/cbsdtee.c -o ${distdir}/misc/cbsdtee
+	installne "-s -o ${cbsduser} -g ${cbsduser} -m 555" ${distdir}/misc/cbsdtee ${miscdir}/cbsdtee
+	[ -f ${distdir}/misc/cbsdtee ] && /bin/rm -f ${distdir}/misc/cbsdtee
 
 	[ ! -f "${distdir}/misc/daemon" ] && ${CC_CMD} ${distdir}/misc/src/daemon.c -lutil -o ${distdir}/misc/daemon
 	installne "-s -o ${cbsduser} -g ${cbsduser} -m 555" ${distdir}/misc/daemon ${miscdir}/daemon
@@ -415,7 +418,6 @@ EOF
 	done
 
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${globalconf} ${workdir}/cbsd.conf
-	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${globalconflua} ${workdir}/cbsd.lua
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/bsdconfig.subr ${workdir}/bsdconfig.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/cmd.subr ${workdir}/cmd.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/FreeBSD.subr ${workdir}/FreeBSD.subr
@@ -428,11 +430,11 @@ EOF
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/xen.subr ${workdir}/xen.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/zrep.subr ${workdir}/zrep.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/nc.subr ${workdir}/nc.subr
-	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/nc.lua ${workdir}/nc.lua
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/zfs.subr ${workdir}/zfs.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/hammer.subr ${workdir}/hammer.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/tools.subr ${workdir}/tools.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/mdtools.subr ${workdir}/mdtools.subr
+	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/multiple.subr ${workdir}/multiple.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/freebsd_world.subr ${workdir}/freebsd_world.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/initenv.subr ${workdir}/initenv.subr
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/ansiicolor.subr ${workdir}/ansiicolor.subr
@@ -472,6 +474,7 @@ EOF
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/zrep.conf ${sharedir}/zrep.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/bhyvedsk.conf ${sharedir}/bhyvedsk.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/bhyve_dskcontroller.conf ${sharedir}/bhyve_dskcontroller.conf
+	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/bhyve_nvme.conf ${sharedir}/bhyve_nvme.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/bhyvenic.conf ${sharedir}/bhyvenic.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/virtualboxdsk.conf ${sharedir}/virtualboxdsk.conf
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/virtualboxnic.conf ${sharedir}/virtualboxnic.conf
@@ -500,6 +503,7 @@ EOF
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyve.schema ${sharedir}/local-bhyve.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyvedsk.schema ${sharedir}/local-bhyvedsk.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyve-dskcontroller.schema ${sharedir}/local-bhyve-dskcontroller.schema
+	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyve-nvme.schema ${sharedir}/local-bhyve-nvme.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyvenic.schema ${sharedir}/local-bhyvenic.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-jailnic.schema ${sharedir}/local-jailnic.schema
 	installne "-o ${cbsduser} -g ${cbsduser} -m 444" ${distdir}/share/local-bhyveppt.schema ${sharedir}/local-bhyveppt.schema

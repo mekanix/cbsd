@@ -37,21 +37,20 @@ update_base()
 	sqlfile="local"
 
 	_sql="SELECT platform,name,arch,targetarch,ver FROM bsdbase"
-	cbsdsql ${sqlfile} ${_sql}| while read _platform _name _arch _targetarch _ver; do
+	cbsdsql ${sqlfile} ${_sql} | while read _platform _name _arch _targetarch _ver; do
 		base="${_name}_${_arch}_${_targetarch}_${_ver}"
 		basepath=${workdir}/base/${base}
 		${ECHO} ${MAGENTA}"Updating ${basepath}"${NORMAL}
 		case "${platform}" in
 			HardenedBSD)
-				/usr/sbin/hbsd-update -r "${basepath}"
+				/usr/sbin/hbsd-update -n -r "${basepath}"
 				;;
 			FreeBSD)
 				updateconf=$( /usr/bin/mktemp )
 				trap "/bin/rm -f ${update_conf}" HUP INT ABRT BUS TERM EXIT
 				generate_freebsd_config "${updateconf}"
 				FBSD_UPDATE="/usr/sbin/freebsd-update -f ${updateconf} -b ${basepath} --not-running-from-cron"
-				/usr/bin/env PAGER=/bin/cat ${FBSD_UPDATE} fetch
-				${FBSD_UPDATE} install
+				/usr/bin/env PAGER=/bin/cat ${FBSD_UPDATE} fetch install
 				;;
 		esac
 	done
