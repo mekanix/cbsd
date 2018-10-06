@@ -1,12 +1,10 @@
-#include <iostream>
-#include <signal.h>
-#include <sys/un.h>
 #include "asyncworker.h"
 #include "sock.h"
 
+#include <iostream>
+#include <signal.h>
 
 Socket s("/tmp/cbsd.sock");
-
 
 void signalHandler(int sig)
 {
@@ -17,12 +15,11 @@ void signalHandler(int sig)
   exit(0);
 }
 
-
 int main()
 {
   signal(SIGINT, signalHandler);
 
-  while(1)
+  while (1)
   {
     auto client = s.waitForClient();
     if (client != -1)

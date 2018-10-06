@@ -1,8 +1,8 @@
-#include <iostream>
-#include <unistd.h>
-#include <signal.h>
 #include "asyncworker.h"
 
+#include <iostream>
+#include <signal.h>
+#include <unistd.h>
 
 bool AsyncWorker::quit = false;
 std::mutex AsyncWorker::mutex;
@@ -10,20 +10,16 @@ std::condition_variable AsyncWorker::condition;
 std::list<AsyncWorker *> AsyncWorker::finished;
 static auto finishedThread = std::thread(&AsyncWorker::removeFinished);
 
-
-AsyncWorker::AsyncWorker(const int &cl)
-  : client{cl}
+AsyncWorker::AsyncWorker(const int &cl) : client{cl}
 {
   t = std::thread(&AsyncWorker::_process, this);
 }
-
 
 AsyncWorker::~AsyncWorker()
 {
   t.join();
   cleanup();
 }
-
 
 void AsyncWorker::cleanup()
 {
@@ -34,10 +30,9 @@ void AsyncWorker::cleanup()
   }
 }
 
-
 void AsyncWorker::process()
 {
-  while(!quit)
+  while (!quit)
   {
     int rc;
     char buf[128];
@@ -68,7 +63,6 @@ void AsyncWorker::process()
   }
 }
 
-
 void AsyncWorker::_process()
 {
   process();
@@ -79,15 +73,12 @@ void AsyncWorker::_process()
   condition.notify_one();
 }
 
-
 void AsyncWorker::removeFinished()
 {
-  while(1)
+  while (1)
   {
     std::unique_lock<std::mutex> lock(mutex);
-    condition.wait(lock, []{
-      return !finished.empty();
-    });
+    condition.wait(lock, [] { return !finished.empty(); });
     auto worker = finished.front();
     finished.pop_front();
     if (worker != nullptr)
@@ -101,7 +92,6 @@ void AsyncWorker::removeFinished()
   }
 }
 
-
 void AsyncWorker::terminate()
 {
   quit = true;
@@ -112,8 +102,4 @@ void AsyncWorker::terminate()
   condition.notify_all();
 }
 
-
-void AsyncWorker::wait()
-{
-  finishedThread.join();
-}
+void AsyncWorker::wait() { finishedThread.join(); }
