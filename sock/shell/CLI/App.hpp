@@ -222,13 +222,13 @@ class App {
     /// it is not possible to overload on std::function (fixed in c++14
     /// and backported to c++11 on newer compilers). Use capture by reference
     /// to get a pointer to App if needed.
-    App *set_callback(std::function<void()> callback) {
+    App *callback(std::function<void()> callback) {
         callback_ = callback;
         return this;
     }
 
     /// Set a name for the app (empty will use parser to set the name)
-    App *set_name(std::string name = "") {
+    App *name(std::string name = "") {
         name_ = name;
         return this;
     }
@@ -331,7 +331,7 @@ class App {
         CLI::callback_t fun = [&variable](CLI::results_t res) { return detail::lexical_cast(res[0], variable); };
 
         Option *opt = add_option(name, fun, description, false);
-        opt->set_custom_option(detail::type_name<T>());
+        opt->type_name(detail::type_name<T>());
         return opt;
     }
 
@@ -345,11 +345,11 @@ class App {
         CLI::callback_t fun = [&variable](CLI::results_t res) { return detail::lexical_cast(res[0], variable); };
 
         Option *opt = add_option(name, fun, description, defaulted);
-        opt->set_custom_option(detail::type_name<T>());
+        opt->type_name(detail::type_name<T>());
         if(defaulted) {
             std::stringstream out;
             out << variable;
-            opt->set_default_str(out.str());
+            opt->default_str(out.str());
         }
         return opt;
     }
@@ -371,7 +371,7 @@ class App {
         };
 
         Option *opt = add_option(name, fun, description, false);
-        opt->set_custom_option(detail::type_name<T>(), -1);
+        opt->type_name(detail::type_name<T>())->type_size(-1);
         return opt;
     }
 
@@ -393,9 +393,9 @@ class App {
         };
 
         Option *opt = add_option(name, fun, description, defaulted);
-        opt->set_custom_option(detail::type_name<T>(), -1);
+        opt->type_name(detail::type_name<T>())->type_size(-1);
         if(defaulted)
-            opt->set_default_str("[" + detail::join(variable) + "]");
+            opt->default_str("[" + detail::join(variable) + "]");
         return opt;
     }
 
@@ -440,7 +440,7 @@ class App {
         Option *opt = add_option(name, fun, description, false);
         if(opt->get_positional())
             throw IncorrectConstruction::PositionalFlag(name);
-        opt->set_custom_option("", 0);
+        opt->type_size(0);
         return opt;
     }
 
@@ -460,7 +460,7 @@ class App {
         Option *opt = add_option(name, fun, description, false);
         if(opt->get_positional())
             throw IncorrectConstruction::PositionalFlag(name);
-        opt->set_custom_option("", 0);
+        opt->type_size(0);
         return opt;
     }
 
@@ -480,7 +480,7 @@ class App {
         Option *opt = add_option(name, fun, description, false);
         if(opt->get_positional())
             throw IncorrectConstruction::PositionalFlag(name);
-        opt->set_custom_option("", 0);
+        opt->type_size(0);
         opt->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
         return opt;
     }
@@ -499,7 +499,7 @@ class App {
         Option *opt = add_option(name, fun, description, false);
         if(opt->get_positional())
             throw IncorrectConstruction::PositionalFlag(name);
-        opt->set_custom_option("", 0);
+        opt->type_size(0);
         return opt;
     }
 
@@ -530,7 +530,7 @@ class App {
         Option *opt = add_option(name, fun, description, false);
         std::string typeval = detail::type_name<T>();
         typeval += " in {" + detail::join(options) + "}";
-        opt->set_custom_option(typeval);
+        opt->type_name(typeval);
         return opt;
     }
 
@@ -550,7 +550,7 @@ class App {
         };
 
         Option *opt = add_option(name, fun, description, false);
-        opt->set_type_name_fn(
+        opt->type_name_fn(
             [&options]() { return std::string(detail::type_name<T>()) + " in {" + detail::join(options) + "}"; });
 
         return opt;
@@ -575,11 +575,11 @@ class App {
         Option *opt = add_option(name, fun, description, defaulted);
         std::string typeval = detail::type_name<T>();
         typeval += " in {" + detail::join(options) + "}";
-        opt->set_custom_option(typeval);
+        opt->type_name(typeval);
         if(defaulted) {
             std::stringstream out;
             out << member;
-            opt->set_default_str(out.str());
+            opt->default_str(out.str());
         }
         return opt;
     }
@@ -601,12 +601,12 @@ class App {
         };
 
         Option *opt = add_option(name, fun, description, defaulted);
-        opt->set_type_name_fn(
+        opt->type_name_fn(
             [&options]() { return std::string(detail::type_name<T>()) + " in {" + detail::join(options) + "}"; });
         if(defaulted) {
             std::stringstream out;
             out << member;
-            opt->set_default_str(out.str());
+            opt->default_str(out.str());
         }
         return opt;
     }
@@ -634,7 +634,7 @@ class App {
         Option *opt = add_option(name, fun, description, false);
         std::string typeval = detail::type_name<std::string>();
         typeval += " in {" + detail::join(options) + "}";
-        opt->set_custom_option(typeval);
+        opt->type_name(typeval);
 
         return opt;
     }
@@ -660,7 +660,7 @@ class App {
         };
 
         Option *opt = add_option(name, fun, description, false);
-        opt->set_type_name_fn([&options]() {
+        opt->type_name_fn([&options]() {
             return std::string(detail::type_name<std::string>()) + " in {" + detail::join(options) + "}";
         });
 
@@ -691,9 +691,9 @@ class App {
         Option *opt = add_option(name, fun, description, defaulted);
         std::string typeval = detail::type_name<std::string>();
         typeval += " in {" + detail::join(options) + "}";
-        opt->set_custom_option(typeval);
+        opt->type_name(typeval);
         if(defaulted) {
-            opt->set_default_str(member);
+            opt->default_str(member);
         }
         return opt;
     }
@@ -720,11 +720,11 @@ class App {
         };
 
         Option *opt = add_option(name, fun, description, defaulted);
-        opt->set_type_name_fn([&options]() {
+        opt->type_name_fn([&options]() {
             return std::string(detail::type_name<std::string>()) + " in {" + detail::join(options) + "}";
         });
         if(defaulted) {
-            opt->set_default_str(member);
+            opt->default_str(member);
         }
         return opt;
     }
@@ -749,11 +749,11 @@ class App {
         };
 
         CLI::Option *opt = add_option(name, fun, description, defaulted);
-        opt->set_custom_option(label, 2);
+        opt->type_name(label)->type_size(2);
         if(defaulted) {
             std::stringstream out;
             out << variable;
-            opt->set_default_str(out.str());
+            opt->default_str(out.str());
         }
         return opt;
     }
@@ -878,6 +878,21 @@ class App {
     ///@}
     /// @name Parsing
     ///@{
+    //
+    /// Reset the parsed data
+    void clear() {
+
+        parsed_ = false;
+        missing_.clear();
+        parsed_subcommands_.clear();
+
+        for(const Option_p &opt : options_) {
+            opt->clear();
+        }
+        for(const App_p &app : subcommands_) {
+            app->clear();
+        }
+    }
 
     /// Parses the command line - throws errors
     /// This must be called after the options are in but before the rest of the program.
@@ -895,13 +910,22 @@ class App {
     /// The real work is done here. Expects a reversed vector.
     /// Changes the vector to the remaining options.
     void parse(std::vector<std::string> &args) {
+        // Clear if parsed
+        if(parsed_)
+            clear();
+
+        // Redundant (set by _parse on commands/subcommands)
+        // but placed here to make sure this is cleared when
+        // running parse after an error is thrown, even by _validate.
+        parsed_ = true;
+
         _validate();
         _parse(args);
         run_callback();
     }
 
     /// Provide a function to print a help message. The function gets access to the App pointer and error.
-    void set_failure_message(std::function<std::string(const App *, const Error &e)> function) {
+    void failure_message(std::function<std::string(const App *, const Error &e)> function) {
         failure_message_ = function;
     }
 
@@ -928,21 +952,6 @@ class App {
         }
 
         return e.get_exit_code();
-    }
-
-    /// Reset the parsed data
-    void reset() {
-
-        parsed_ = false;
-        missing_.clear();
-        parsed_subcommands_.clear();
-
-        for(const Option_p &opt : options_) {
-            opt->clear();
-        }
-        for(const App_p &app : subcommands_) {
-            app->reset();
-        }
     }
 
     ///@}
@@ -1012,7 +1021,7 @@ class App {
     ///@{
 
     /// Set footer.
-    App *set_footer(std::string footer) {
+    App *footer(std::string footer) {
         footer_ = footer;
         return this;
     }
@@ -1034,10 +1043,22 @@ class App {
         // Delegate to subcommand if needed
         auto selected_subcommands = get_subcommands();
         if(!selected_subcommands.empty())
-            return selected_subcommands.at(0)->help(prev);
+            return selected_subcommands.at(0)->help(prev, mode);
         else
             return formatter_->make_help(this, prev, mode);
     }
+
+    /// Provided for backwards compatibility \deprecated
+    CLI11_DEPRECATED("Please use footer instead")
+    App *set_footer(std::string msg) { return footer(msg); }
+
+    /// Provided for backwards compatibility \deprecated
+    CLI11_DEPRECATED("Please use name instead")
+    App *set_name(std::string msg) { return name(msg); }
+
+    /// Provided for backwards compatibility \deprecated
+    CLI11_DEPRECATED("Please use callback instead")
+    App *set_callback(std::function<void()> fn) { return callback(fn); }
 
     ///@}
     /// @name Getters
@@ -1187,7 +1208,7 @@ class App {
 
     /// This returns the number of remaining options, minus the -- seperator
     size_t remaining_size(bool recurse = false) const {
-        size_t count = static_cast<size_t>(std::count_if(
+        auto count = static_cast<size_t>(std::count_if(
             std::begin(missing_), std::end(missing_), [](const std::pair<detail::Classifer, std::string> &val) {
                 return val.first != detail::Classifer::POSITIONAL_MARK;
             }));
@@ -1349,9 +1370,12 @@ class App {
             size_t num_left_over = remaining_size();
             if(num_left_over > 0) {
                 args = remaining(false);
-                std::reverse(std::begin(args), std::end(args));
                 throw ExtrasError(args);
             }
+        }
+
+        if(parent_ == nullptr) {
+            args = remaining(false);
         }
     }
 
@@ -1608,6 +1632,7 @@ class App {
 
 namespace FailureMessage {
 
+/// Printout a clean, simple message on error (the default in CLI11 1.5+)
 inline std::string simple(const App *app, const Error &e) {
     std::string header = std::string(e.what()) + "\n";
     if(app->get_help_ptr() != nullptr)
@@ -1615,6 +1640,7 @@ inline std::string simple(const App *app, const Error &e) {
     return header;
 }
 
+/// Printout the full help string on error (if this fn is set, the old default for CLI11)
 inline std::string help(const App *app, const Error &e) {
     std::string header = std::string("ERROR: ") + e.get_name() + ": " + e.what() + "\n";
     header += app->help();

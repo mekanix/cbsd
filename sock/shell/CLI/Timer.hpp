@@ -17,6 +17,7 @@
 
 namespace CLI {
 
+/// This is a simple timer with pretty printing. Creating the timer starts counting.
 class Timer {
   protected:
     /// This is a typedef to make clocks easier to use
@@ -82,6 +83,7 @@ class Timer {
     }
 
     // LCOV_EXCL_START
+    /// This prints out a time string from a time
     std::string make_time_str(double time) const {
         auto print_it = [](double x, std::string unit) {
             char buffer[50];

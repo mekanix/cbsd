@@ -16,7 +16,8 @@ class App;
 
 namespace detail {
 
-inline std::string inijoin(std::vector<std::string> args) {
+/// Comma separated join, adds quotes if needed
+inline std::string ini_join(std::vector<std::string> args) {
     std::ostringstream s;
     size_t start = 0;
     for(const auto &arg : args) {
@@ -37,6 +38,7 @@ inline std::string inijoin(std::vector<std::string> args) {
 
 } // namespace detail
 
+/// Holds values to load into Options
 struct ConfigItem {
     /// This is the list of parents
     std::vector<std::string> parents;
@@ -68,27 +70,7 @@ class Config {
     virtual std::vector<ConfigItem> from_config(std::istream &) const = 0;
 
     /// Convert a flag to a bool
-    virtual std::vector<std::string> to_flag(const ConfigItem &) const = 0;
-
-    /// Parse a config file, throw an error (ParseError:ConfigParseError or FileError) on failure
-    std::vector<ConfigItem> from_file(const std::string &name) {
-        std::ifstream input{name};
-        if(!input.good())
-            throw FileError::Missing(name);
-
-        return from_config(input);
-    }
-
-    /// virtual destructor
-    virtual ~Config() = default;
-};
-
-/// This converter works with INI files
-class ConfigINI : public Config {
-  public:
-    std::string to_config(const App *, bool default_also, bool write_description, std::string prefix) const override;
-
-    std::vector<std::string> to_flag(const ConfigItem &item) const override {
+    virtual std::vector<std::string> to_flag(const ConfigItem &item) const {
         if(item.inputs.size() == 1) {
             std::string val = item.inputs.at(0);
             val = detail::to_lower(val);
@@ -110,6 +92,24 @@ class ConfigINI : public Config {
         }
     }
 
+    /// Parse a config file, throw an error (ParseError:ConfigParseError or FileError) on failure
+    std::vector<ConfigItem> from_file(const std::string &name) {
+        std::ifstream input{name};
+        if(!input.good())
+            throw FileError::Missing(name);
+
+        return from_config(input);
+    }
+
+    /// virtual destructor
+    virtual ~Config() = default;
+};
+
+/// This converter works with INI files
+class ConfigINI : public Config {
+  public:
+    std::string to_config(const App *, bool default_also, bool write_description, std::string prefix) const override;
+
     std::vector<ConfigItem> from_config(std::istream &input) const override {
         std::string line;
         std::string section = "default";
@@ -117,7 +117,7 @@ class ConfigINI : public Config {
         std::vector<ConfigItem> output;
 
         while(getline(input, line)) {
-            std::vector<std::string> items;
+            std::vector<std::string> items_buffer;
 
             detail::trim(line);
             size_t len = line.length();
@@ -132,10 +132,10 @@ class ConfigINI : public Config {
                 if(pos != std::string::npos) {
                     out.name = detail::trim_copy(line.substr(0, pos));
                     std::string item = detail::trim_copy(line.substr(pos + 1));
-                    items = detail::split_up(item);
+                    items_buffer = detail::split_up(item);
                 } else {
                     out.name = detail::trim_copy(line);
-                    items = {"ON"};
+                    items_buffer = {"ON"};
                 }
 
                 if(detail::to_lower(section) != "default") {
@@ -149,7 +149,7 @@ class ConfigINI : public Config {
                     out.parents.insert(out.parents.end(), plist.begin(), plist.end());
                 }
 
-                out.inputs.insert(std::end(out.inputs), std::begin(items), std::end(items));
+                out.inputs.insert(std::end(out.inputs), std::begin(items_buffer), std::end(items_buffer));
             }
         }
         return output;

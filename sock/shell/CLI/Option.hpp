@@ -30,6 +30,8 @@ using Option_p = std::unique_ptr<Option>;
 
 enum class MultiOptionPolicy { Throw, TakeLast, TakeFirst, Join };
 
+/// This is the CRTP base class for Option and OptionDefaults. It was designed this way
+/// to share parts of the class; an OptionDefaults can copy to an Option.
 template <typename CRTP> class OptionBase {
     friend App;
 
@@ -49,6 +51,7 @@ template <typename CRTP> class OptionBase {
     /// Policy for multiple arguments when `expected_ == 1`  (can be set on bool flags, too)
     MultiOptionPolicy multi_option_policy_{MultiOptionPolicy::Throw};
 
+    /// Copy the contents to another similar class (one based on OptionBase)
     template <typename T> void copy_to(T *other) const {
         other->group(group_);
         other->required(required_);
@@ -123,6 +126,8 @@ template <typename CRTP> class OptionBase {
     }
 };
 
+/// This is a version of OptionBase that only supports setting values,
+/// for defaults. It is stored as the default option in an App.
 class OptionDefaults : public OptionBase<OptionDefaults> {
   public:
     OptionDefaults() = default;
@@ -174,7 +179,7 @@ class Option : public OptionBase<Option> {
     /// A human readable type value, set when App creates this
     ///
     /// This is a lambda function so "types" can be dynamic, such as when a set prints its contents.
-    std::function<std::string()> type_name_;
+    std::function<std::string()> type_name_{[]() { return std::string(); }};
 
     /// True if this option has a default
     bool default_{false};
@@ -226,12 +231,10 @@ class Option : public OptionBase<Option> {
     ///@}
 
     /// Making an option by hand is not defined, it must be made by the App class
-    Option(std::string name,
-           std::string description = "",
-           std::function<bool(results_t)> callback = [](results_t) { return true; },
-           bool default_ = true,
-           App *parent = nullptr)
-        : description_(std::move(description)), default_(default_), parent_(parent), callback_(std::move(callback)) {
+    Option(
+        std::string name, std::string description, std::function<bool(results_t)> callback, bool defaulted, App *parent)
+        : description_(std::move(description)), default_(defaulted), parent_(parent),
+          callback_(callback ? std::move(callback) : [](results_t) { return true; }) {
         std::tie(snames_, lnames_, pname_) = detail::get_names(detail::split_names(name));
     }
 
@@ -285,11 +288,11 @@ class Option : public OptionBase<Option> {
     Option *check(const Validator &validator) {
         validators_.emplace_back(validator.func);
         if(!validator.tname.empty())
-            set_type_name(validator.tname);
+            type_name(validator.tname);
         return this;
     }
 
-    /// Adds a validator
+    /// Adds a validator. Takes a const string& and returns an error message (empty if conversion/check is okay).
     Option *check(std::function<std::string(const std::string &)> validator) {
         validators_.emplace_back(validator);
         return this;
@@ -438,7 +441,7 @@ class Option : public OptionBase<Option> {
     /// The number of times the option expects to be included
     int get_expected() const { return expected_; }
 
-    /// \breif The total number of expected values (including the type)
+    /// \brief The total number of expected values (including the type)
     /// This is positive if exactly this number is expected, and negitive for at least N values
     ///
     /// v = fabs(size_type*expected)
@@ -543,7 +546,8 @@ class Option : public OptionBase<Option> {
 
         // Num items expected or length of vector, always at least 1
         // Only valid for a trimming policy
-        int trim_size = std::min(std::max(std::abs(get_items_expected()), 1), static_cast<int>(results_.size()));
+        int trim_size =
+            std::min<int>(std::max<int>(std::abs(get_items_expected()), 1), static_cast<int>(results_.size()));
 
         // Operation depends on the policy setting
         if(multi_option_policy_ == MultiOptionPolicy::TakeLast) {
@@ -560,12 +564,18 @@ class Option : public OptionBase<Option> {
             local_result = !callback_(partial_result);
 
         } else {
-            // For now, vector of non size 1 types are not supported but possibility included here
-            if((get_items_expected() > 0 && results_.size() != static_cast<size_t>(get_items_expected())) ||
-               (get_items_expected() < 0 && results_.size() < static_cast<size_t>(-get_items_expected())))
-                throw ArgumentMismatch(get_name(), get_items_expected(), results_.size());
-            else
-                local_result = !callback_(results_);
+            // Exact number required
+            if(get_items_expected() > 0) {
+                if(results_.size() != static_cast<size_t>(get_items_expected()))
+                    throw ArgumentMismatch(get_name(), get_items_expected(), results_.size());
+                // Variable length list
+            } else if(get_items_expected() < 0) {
+                // Require that this be a multiple of expected size and at least as many as expected
+                if(results_.size() < static_cast<size_t>(-get_items_expected()) ||
+                   results_.size() % static_cast<size_t>(std::abs(get_type_size())) != 0)
+                    throw ArgumentMismatch(get_name(), get_items_expected(), results_.size());
+            }
+            local_result = !callback_(results_);
         }
 
         if(local_result)
@@ -630,15 +640,17 @@ class Option : public OptionBase<Option> {
     }
 
     /// Puts a result at the end
-    void add_result(std::string s) {
+    Option *add_result(std::string s) {
         results_.push_back(s);
         callback_run_ = false;
+        return this;
     }
 
     /// Set the results vector all at once
-    void set_results(std::vector<std::string> results) {
+    Option *set_results(std::vector<std::string> results) {
         results_ = results;
         callback_run_ = false;
+        return this;
     }
 
     /// Get a copy of the results
@@ -651,35 +663,47 @@ class Option : public OptionBase<Option> {
     /// @name Custom options
     ///@{
 
-    /// Set a custom option, typestring, type_size
-    void set_custom_option(std::string typeval, int type_size = 1) {
-        set_type_name(typeval);
+    /// Set the type function to run when displayed on this option
+    Option *type_name_fn(std::function<std::string()> typefun) {
+        type_name_ = typefun;
+        return this;
+    }
+
+    /// Set a custom option typestring
+    Option *type_name(std::string typeval) {
+        type_name_fn([typeval]() { return typeval; });
+        return this;
+    }
+
+    /// Provided for backward compatibility \deprecated
+    CLI11_DEPRECATED("Please use type_name instead")
+    Option *set_type_name(std::string typeval) { return type_name(typeval); }
+
+    /// Set a custom option size
+    Option *type_size(int type_size) {
         type_size_ = type_size;
         if(type_size_ == 0)
             required_ = false;
         if(type_size < 0)
             expected_ = -1;
+        return this;
     }
 
     /// Set the default value string representation
-    void set_default_str(std::string val) { defaultval_ = val; }
+    Option *default_str(std::string val) {
+        defaultval_ = val;
+        return this;
+    }
 
     /// Set the default value string representation and evaluate
-    void set_default_val(std::string val) {
-        set_default_str(val);
+    Option *default_val(std::string val) {
+        default_str(val);
         auto old_results = results_;
         results_ = {val};
         run_callback();
         results_ = std::move(old_results);
+        return this;
     }
-
-    /// Set the type name displayed on this option
-    void set_type_name(std::string typeval) {
-        set_type_name_fn([typeval]() { return typeval; });
-    }
-
-    /// Set the type function to run when displayed on this option
-    void set_type_name_fn(std::function<std::string()> typefun) { type_name_ = typefun; }
 
     /// Get the typename for this option
     std::string get_type_name() const { return type_name_(); }
