@@ -1,6 +1,6 @@
-#include "CLI/CLI.hpp"
-#include "socket.h"
 #include "message.h"
+#include "parser.h"
+#include "socket.h"
 
 #include <chrono>
 #include <iostream>
@@ -9,22 +9,12 @@
 #include <thread>
 #include <vector>
 
-std::map<std::string, std::string> options;
-std::vector<std::string> jails;
-
 int main(int argc, char **argv)
 {
-  CLI::App app{"CBSD shell"};
-  app.set_help_all_flag("--help-all", "Expand all help");
-  auto construct = app.add_subcommand("construct", "Construct resource");
-  construct->add_option("jail", jails, "Jail name")->required();
-  auto start = app.add_subcommand("start", "Start resource");
-  start->add_option("jail", jails, "Jail name")->required();
-  auto stop = app.add_subcommand("stop", "Stop resource");
-  stop->add_option("jail", jails, "Jail name")->required();
-  CLI11_PARSE(app, argc, argv);
+  Parser p;
+  p.parse(argc, argv);
   Socket s("/tmp/cbsd.sock");
-  if (app.get_subcommands().size() == 0)
+  if (p.app.get_subcommands().size() == 0)
   {
     std::cout << "Welcome to CBSD interactive shell" << std::endl;
     replxx::Replxx rx;
@@ -46,13 +36,41 @@ int main(int argc, char **argv)
     {
       return 0;
     }
-    rx.history_add(raw_input);
+    std::stringstream ss;
+    std::vector<std::string> args;
+    bool ok = true;
+    ss << raw_input;
+    while(!ss.eof())
+    {
+      std::string s;
+      ss >> s;
+      if (ss.fail())
+      {
+        ok = false;
+        break;
+      }
+      args.insert(args.begin(), s);
+    }
+    if (ok)
+    {
+      p.parse(args);
+      rx.history_add(raw_input);
+      std::string data = p.app.get_subcommands()[0]->get_name();
+      for (auto jail : p.jails())
+      {
+        data += ' ';
+        data += jail;
+      }
+      Message m;
+      m.data(0, 0, data);
+      s << m;
+    }
     rx.history_save(history_file);
   }
   else
   {
-    std::string data = app.get_subcommands()[0]->get_name();
-    for (auto jail : jails)
+    std::string data = p.app.get_subcommands()[0]->get_name();
+    for (auto jail : p.jails())
     {
       data += ' ';
       data += jail;
