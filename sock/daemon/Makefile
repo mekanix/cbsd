@@ -1,4 +1,4 @@
-CXXFLAGS += -I/usr/local/include -std=c++11
+CXXFLAGS += -I. -I.. -I/usr/local/include -std=c++11
 SRCS != ls -1 *.cpp
 LDADD = -pthread
 PROG_CXX = cbsdd

@@ -1,7 +1,10 @@
 #include "asyncworker.h"
 
+#include "message.h"
+
 #include <iostream>
 #include <signal.h>
+#include <sstream>
 #include <unistd.h>
 
 bool AsyncWorker::quit = false;
@@ -36,7 +39,7 @@ void AsyncWorker::process()
   {
     int rc;
     char buf[128];
-    std::string result;
+    std::stringstream raw_data;
 
     rc = read(client, buf, sizeof(buf));
     if (rc < 0)
@@ -54,12 +57,28 @@ void AsyncWorker::process()
     {
       buf[rc] = '\0';
     }
-    result = buf;
-    std::cout << result << std::endl;
-    if (result == "quit")
+    raw_data << buf;
+    int size;
+    int id;
+    int type;
+    std::string data;
+    raw_data >> size >> id >> type;
+    if (raw_data.fail())
     {
-      kill(getpid(), SIGINT);
+      return;
     }
+    while(!raw_data.eof())
+    {
+      if (data.size() != 0)
+      {
+        data += ' ';
+      }
+      std::string s;
+      raw_data >> s;
+      data += s;
+    }
+    Message m(id, type, data);
+    std::cout << m.data() << std::endl;
   }
 }
 
