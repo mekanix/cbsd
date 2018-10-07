@@ -26,9 +26,28 @@ int main(int argc, char **argv)
   Socket s("/tmp/cbsd.sock");
   if (app.get_subcommands().size() == 0)
   {
-    std::cout << "Interactive shell" << std::endl;
+    std::cout << "Welcome to CBSD interactive shell" << std::endl;
     replxx::Replxx rx;
-    std::string raw_input = rx.input("> ");
+    rx.install_window_change_handler();
+    char *raw_home = getenv("HOME");
+    std::string home;
+    if (!raw_home)
+    {
+      home = "";
+    }
+    else
+    {
+      home = raw_home;
+    }
+    std::string history_file = home + "/.cbsdsh_history";
+    rx.history_load(history_file);
+    auto raw_input = rx.input("> ");
+    if (raw_input == nullptr)
+    {
+      return 0;
+    }
+    rx.history_add(raw_input);
+    rx.history_save(history_file);
   }
   else
   {
