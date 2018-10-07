@@ -29,8 +29,7 @@ int Parser::parse(std::vector<std::string> &argv)
   try {
       app.parse(argv);
   } catch (const CLI::ParseError &e) {
-      auto rc = app.exit(e);
-      exit(rc);
+      return app.exit(e);
   }
   return 0;
 }
