@@ -1,7 +1,5 @@
 #include "asyncworker.h"
 
-#include "message.h"
-
 #include <iostream>
 #include <signal.h>
 #include <sstream>
@@ -78,7 +76,24 @@ void AsyncWorker::process()
       data += s;
     }
     Message m(id, type, data);
-    std::cout << m.data() << std::endl;
+    execute(m);
+  }
+}
+
+void AsyncWorker::execute(const Message &m)
+{
+  std::cout << m.data() << std::endl;
+  switch(m.gettype())
+  {
+    case 0:
+    {
+      std::cout << "Executing cbsd j" << m.getpayload() << std::endl;
+      std::string command = "cbsd j" + m.getpayload();
+      system(command.data());
+      break;
+    }
+    default:
+      break;
   }
 }
 

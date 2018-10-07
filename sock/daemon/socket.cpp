@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -29,13 +30,13 @@ Socket::Socket(const std::string &socket_path) : socketPath{socket_path}
 
   if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
   {
-    perror("bind error");
+    std::cerr << "bind error: " << strerror(errno) << std::endl;
     exit(-1);
   }
-
+  chmod(socketPath.data(), 0666);
   if (listen(fd, 5) == -1)
   {
-    perror("listen error");
+    std::cerr << "listen error: " << strerror(errno) << std::endl;
     exit(-1);
   }
 }

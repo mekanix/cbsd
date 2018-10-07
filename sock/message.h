@@ -77,6 +77,10 @@ public:
     payload = _payload;
   }
 
+  int getid() const { return id; };
+  int gettype() const { return type; };
+  std::string getpayload() const { return payload; };
+
 protected:
   int id;
   int type;

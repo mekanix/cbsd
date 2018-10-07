@@ -1,4 +1,5 @@
 #pragma once
+#include "message.h"
 
 #include <condition_variable>
 #include <list>
@@ -18,6 +19,7 @@ public:
 
   void process();
   void cleanup();
+  void execute(const Message &m);
 
 protected:
   int client;
