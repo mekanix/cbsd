@@ -68,8 +68,7 @@ void Shell::run()
       if (rc == 0)
       {
         rx.history_add(raw_input);
-        auto subcommands = parser.app.get_subcommands();
-        if (subcommands.size() == 0)
+        if (parser.subcommandsSize() == 0)
         {
           continue;
         }
@@ -77,7 +76,7 @@ void Shell::run()
         {
           continue;
         }
-        std::string data = subcommands[0]->get_name();
+        std::string data = parser.subcommandName(0);
         for (auto jail : parser.jails())
         {
           data += ' ';

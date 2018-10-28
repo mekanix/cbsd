@@ -8,14 +8,14 @@ int main(int argc, char **argv)
   Parser parser;
   parser.parse(argc, argv);
   Socket socket("/tmp/cbsd.sock");
-  if (parser.app.get_subcommands().size() == 0)
+  if (parser.subcommandsSize() == 0)
   {
     Shell shell(parser, socket);
     shell.run();
   }
   else
   {
-    std::string data = parser.app.get_subcommands()[0]->get_name();
+    std::string data = parser.subcommandName(0);
     for (auto jail : parser.jails())
     {
       data += ' ';

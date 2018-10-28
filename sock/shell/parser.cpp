@@ -1,6 +1,10 @@
 #include "parser.h"
 
-Parser::Parser() : app{"CBSD shell"}
+#include "CLI/CLI.hpp"
+
+static CLI::App app("CBSD shell");
+
+Parser::Parser()
 {
   app.set_help_all_flag("--help-all", "Expand all help");
   auto construct = app.add_subcommand("construct", "Construct resource");
@@ -13,33 +17,45 @@ Parser::Parser() : app{"CBSD shell"}
 
 Parser::~Parser() {}
 
-int Parser::parse(const int &argc, const char * const *argv)
+int Parser::parse(const int &argc, const char *const *argv)
 {
-  try {
-      app.parse(argc, argv);
-  } catch (const CLI::ParseError &e) {
-      auto rc = app.exit(e);
-      exit(rc);
+  try
+  {
+    app.parse(argc, argv);
+  }
+  catch (const CLI::ParseError &e)
+  {
+    auto rc = app.exit(e);
+    exit(rc);
   }
   return 0;
 }
 
 int Parser::parse(std::vector<std::string> &argv)
 {
-  try {
-      app.parse(argv);
-  } catch (const CLI::ParseError &e) {
-      return app.exit(e);
+  try
+  {
+    app.parse(argv);
+  }
+  catch (const CLI::ParseError &e)
+  {
+    return app.exit(e);
   }
   return 0;
 }
 
-std::map<std::string, std::string> Parser::options()
+std::map<std::string, std::string> Parser::options() { return _options; }
+
+std::vector<std::string> Parser::jails() { return _jails; }
+
+
+std::string Parser::subcommandName(const int &index)
 {
-  return _options;
+  return app.get_subcommands()[index]->get_name();
 }
 
-std::vector<std::string> Parser::jails()
+
+int Parser::subcommandsSize()
 {
-  return _jails;
+  return app.get_subcommands().size();
 }

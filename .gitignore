@@ -2,8 +2,6 @@
 *.full
 *.debug
 *.o
-sock/daemon/cbsdd
-sock/shell/cbsdsh
 bin/cbsdsftp
 bin/cbsdsftp6
 bin/cbsdsh/.depend
@@ -25,6 +23,7 @@ bin/cfetch
 misc/cbsd_dot
 misc/cbsd_fwatch
 misc/cbsdlogtail
+misc/cbsdtee
 misc/chk_arp_byip
 misc/conv2human
 misc/daemon
@@ -36,6 +35,8 @@ misc/pwcrypt
 misc/resolv
 misc/sqlcli
 sbin/netmask
+sock/daemon/cbsdd
+sock/shell/cbsdsh
 tools/bridge
 tools/imghelper
 tools/nic_info
