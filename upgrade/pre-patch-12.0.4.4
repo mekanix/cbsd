@@ -1,0 +1,34 @@
+#!/bin/sh
+#v12.0.4
+# Update bhyve_dskcontroller tables for order_id column
+: ${distdir="/usr/local/cbsd"}
+unset workdir
+
+# MAIN
+[ -z "${cbsd_workdir}" ] && . /etc/rc.conf
+[ -z "${cbsd_workdir}" ] && exit
+
+workdir="${cbsd_workdir}"
+
+[ ! -f "${distdir}/cbsd.conf" ] && exit
+
+. ${distdir}/cbsd.conf
+. ${distdir}/tools.subr
+test_sql_stuff
+
+[ ! -h "${dbdir}/local.sqlite" ] && exit
+
+vms=$( ${miscdir}/sqlcli ${dbdir}/local.sqlite "SELECT jname FROM jails WHERE emulator = \"bhyve\"" )
+
+for i in ${vms}; do
+	mydb="${jailsysdir}/${i}/local.sqlite"
+	[ ! -r "${mydb}" ] && continue
+	# alter order_id if not exist
+	unset _test
+	_test=$( ${miscdir}/sqlcli ${mydb} "SELECT count(order_id) FROM bhyve_dskcontroller" 2>/dev/null )
+	[ -n "${_test}" ] && continue
+	${ECHO} "  * ${N1_COLOR}Update settings tables: order_id for ${N2_COLOR}${i}${N0_COLOR}"
+	${miscdir}/sqlcli ${mydb} ALTER TABLE bhyve_dskcontroller ADD COLUMN order_id integer default 0
+	# Insert default ahci controller
+	# ${miscdir}/sqlcli ${mydb} "INSERT INTO bhyve_dskcontroller ( name, type, order_id ) VALUES ( 'ahci0', 'ahci', 0 )"
+done

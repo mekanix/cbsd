@@ -1,19 +1,13 @@
-#!/bin/sh
-#v10.0.4
-globalconf="${workdir}/cbsd.conf";
+#!/usr/local/bin/cbsd
+#v12.0.11
 MYARG=""
 MYOPTARG="mode"
 MYDESC="Collect and/or update system-related information in inventory tables"
 ADDHELP="sysinv withount mode=update only collect information and stored in variables\n\
 mode=update - collect and update in db\n"
 
-set -e
-. ${globalconf}
-set +e
-
-
 . ${subr}
-init $*
+. ${cbsdinit}
 
 # create SQL schema
 #${miscdir}/sqlcli ${dbdir}/local.sqlite DROP TABLE IF EXISTS local
@@ -80,7 +74,7 @@ sysinv_get_info_disks()
 
 sysinv_get_info_nodenamefile()
 {
-	[ -r "${nodenamefile}" ] && nodename=$( /bin/cat ${nodenamefile} )
+	[ -r "${nodenamefile}" ] && nodename=$( /bin/cat ${nodenamefile} | /usr/bin/awk '{printf $1}' )
 	[ -z "${nodenamefile}" ] && nodenamefile="unknown"
 }
 
@@ -121,9 +115,9 @@ sysinv_get_info_freemem()
 	local _realmem _page_size _active_count _wire_count _active_size _wire_size _freemem
 
 	_realmem=$( /sbin/sysctl -n hw.physmem 2>/dev/null )
-	_page_size=$( sysctl -n vm.stats.vm.v_page_size )
-	_active_count=$( sysctl -n vm.stats.vm.v_active_count )
-	_wire_count=$( sysctl -n vm.stats.vm.v_wire_count )
+	_page_size=$( /sbin/sysctl -n vm.stats.vm.v_page_size )
+	_active_count=$( /sbin/sysctl -n vm.stats.vm.v_active_count )
+	_wire_count=$( /sbin/sysctl -n vm.stats.vm.v_wire_count )
 	_active_size=$(( _page_size * _active_count ))
 	_wire_size=$(( _page_size * _wire_count ))
 
@@ -143,7 +137,7 @@ sysinv_get_info_memtype()
 	_dmidecode=$( which dmidecode )
 
 	if [ -n "${_dmidecode}" ]; then
-		memtype=$( ${_dmidecode} -t memory|grep -A20 "Memory Device" | grep -B20 "^Handle" | egrep "Type:|Speed:" |cut -d : -f 2 |xargs )
+		memtype=$( ${_dmidecode} -t memory | /usr/bin/grep -A20 "Memory Device" | /usr/bin/grep -B20 "^Handle" | /usr/bin/egrep "Type:|Speed:" | /usr/bin/cut -d : -f 2 | /usr/bin/xargs )
 	else
 		memtype=""
 	fi
@@ -160,7 +154,7 @@ sysinv_get_info_nics()
 		esac
 		nics="${nics} ${i}"
 	done
-	[ -n "${nics}" ] && nics=$( echo ${nics}| /usr/bin/tr " " "," )
+	[ -n "${nics}" ] && nics=$( echo ${nics} | /usr/bin/tr " " "," )
 }
 
 # NEW
@@ -209,12 +203,17 @@ sysinv_get_info_is_virtual()
 	esac
 }
 
+sysinv_get_info_cbsdver()
+{
+	cbsdver=$( /usr/local/bin/cbsd version )
+}
+
 collect_info()
 {
 	cbsdver=${myversion}
 	platform=$( /usr/bin/uname -s )
 
-	for i in hostname hostarch osrelease cpumodel ncpu cpufreq kernhz sched eventtimer disks nodenamefile vimage_feature racct physmem freemem memtype nics la is_virtual; do
+	for i in hostname hostarch osrelease cpumodel ncpu cpufreq kernhz sched eventtimer disks nodenamefile vimage_feature racct physmem freemem memtype nics la is_virtual cbsdver; do
 		sysinv_get_info_${i}
 	done
 }
@@ -223,7 +222,7 @@ collect_info()
 collect_info
 
 if [ "${mode}" = "update" ]; then
-	[ ! -h "${dbdir}/local.sqlite" ] && err 1 "${MAGENTA}No inventory symlink. Run ${GREEN}cbsd initenv${MAGENTA} first${NORMAL}"
+	[ ! -h "${dbdir}/local.sqlite" ] && err 1 "${N1_COLOR}No inventory symlink. Run ${N2_COLOR}cbsd initenv${N1_COLOR} first${N0_COLOR}"
 	. ${initenv}
 	update_hwinfo
 	env sqlcolnames="1" ${miscdir}/sqlcli ${dbdir}/local.sqlite "SELECT * FROM local" > ${inventory}

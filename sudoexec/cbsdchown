@@ -1,23 +1,17 @@
-#!/bin/sh
+#!/usr/local/bin/cbsd
 #v9.2.2
-globalconf="${workdir}/cbsd.conf";
 MYARG="jname"
 MYOPTARG=""
 MYDESC="Chown for rc.conf/fstab/system directory to cbsd user"
 
-set -e
-. ${globalconf}
-set +e
-
 . ${subr}
-. ${strings}
-init $*
+. ${cbsdinit}
 
 . ${jrcconf}
 
 cbsd jstatus jname=${jname} > /dev/null 2>&1
 RES=$?
-[ ${RES} -eq 1 ] && err 1 "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
+[ ${RES} -eq 1 ] && err 1 "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
 
 case $RES in
 	0)

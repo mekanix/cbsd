@@ -21,25 +21,28 @@ MANPAGE="man cbsd-jls"
 . ${nodes}
 
 readconf jls.conf
-init $*
+. ${cbsdinit}
 
-oalljails="${alljails}"		# store original settings, they have more weight vs auto
-oshownode="${shownode}"		# store original settings, they have more weight vs auto
+[ -n "${display}" ] && odisplay="${display}"	# store original display settings
+oalljails="${alljails}"				# store original settings, they have more weight vs auto
+oshownode="${shownode}"				# store original settings, they have more weight vs auto
 
 is_cluster_mode
 cluster_mode=$?		# cluster_mode=0 when we have any node
 
 if [ ${cluster_mode} -eq 0 ]; then
-	alljails=1
-	shownode=1
+	if [ "${oshownode}" != "0" ]; then
+		alljails=1
+		shownode=1
+	fi
 fi
 
 # restore manual settings
 [ -n "${oalljails}" ] && alljails="${oalljails}"
 [ -n "${oshownode}" ] && alljails="${oshownode}"
 
-[ -z "${display}" ] && display="jname,jid,ip4_addr,host_hostname,path,status"
-[ "${shownode}" = "1" ] && display="nodename,${display}"
+[ -z "${display}" -a -z "${odisplay}" ] && display="jname,jid,ip4_addr,host_hostname,path,status"
+[ "${shownode}" = "1" -a -z "${odisplay}" ] && display="nodename,${display}"
 
 [ -z "${order}" ] && order="asc"
 
@@ -53,8 +56,8 @@ JLS=""
 
 show_header()
 {
-	local _header="${WHITE}${BOLD}${myheader}${NORMAL}"
-	[ ${header} -eq 1 ] && $ECHO ${_header}
+	local _header="${H1_COLOR}${BOLD}${myheader}${N0_COLOR}"
+	[ ${header} -eq 1 ] && ${ECHO} ${_header}
 }
 
 # -j $jname
@@ -66,7 +69,7 @@ populate_output_data()
 	local unregister="0"
 	local _node_is_online=0 _md5_node_name
 
-	printf "${NORMAL}" # for column sort
+	printf "${N0_COLOR}" # for column sort
 
 	while getopts "j:s:u:" opt; do
 		case "${opt}" in
@@ -78,7 +81,7 @@ populate_output_data()
 	done
 
 	[ -z "${sqlfile}" ] && sqlfile="local"
-	active=$( cbsdsql ${sqlfile} SELECT jid FROM jails WHERE jname=\"${jname}\" )
+	active=$( cbsdsqlro ${sqlfile} SELECT jid FROM jails WHERE jname=\"${jname}\" )
 
 	if [ "${sqlfile}" != "local" ]; then
 		# pop status variable from node_is_online()
@@ -86,18 +89,18 @@ populate_output_data()
 		eval _node_is_online=\$node_${_md5_node_name}_online
 		if [ "${_node_is_online}" = "1" ]; then
 			if [ "${active}" != "0" ]; then
-				printf "${GREEN}"
+				printf "${N2_COLOR}"
 			else
-				printf "${CYAN}"
+				printf "${N4_COLOR}"
 			fi
 		else
 			printf "${DGRAY}"
 		fi
 	else
 		if [ "${active}" != "0" ]; then
-			printf "${GREEN}"
+			printf "${N2_COLOR}"
 		else
-			printf "${CYAN}"
+			printf "${N4_COLOR}"
 		fi
 	fi
 
@@ -119,7 +122,7 @@ populate_output_data()
 		printf "${_val} "
 	done
 
-	printf "${NORMAL}\n"
+	printf "${N0_COLOR}\n"
 }
 
 # $1 - which file from. Eg: local
@@ -134,7 +137,7 @@ show_jaildata_from_sql()
 		sqlfile="local"
 	fi
 
-	cbsdsql ${sqlfile} SELECT jname FROM jails WHERE emulator=\"jail\" OR emulator=\"qemu-arm-static\" OR emulator=\"qemu-mips64-static\" OR emulator=\"qemu-aarch64-static\" ORDER BY jname ${order} | while read jname; do
+	cbsdsqlro ${sqlfile} SELECT jname FROM jails WHERE emulator=\"jail\" OR emulator=\"qemu-arm-static\" OR emulator=\"qemu-mips64-static\" OR emulator=\"qemu-aarch64-static\" ORDER BY jname ${order} | while read jname; do
 		_status=""
 		. ${jrcconf}
 
@@ -179,7 +182,7 @@ show_remote()
 {
 	show_header
 
-	[ -z "${node}" ] && node=$( cbsdsql nodes SELECT nodename FROM nodelist 2>/dev/null | /usr/bin/xargs )
+	[ -z "${node}" ] && node=$( cbsdsqlro nodes SELECT nodename FROM nodelist 2>/dev/null | /usr/bin/xargs )
 
 	for _n in ${node}; do
 		nodename="${_n}"

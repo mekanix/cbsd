@@ -57,17 +57,17 @@ get_base_from_current()
 
 	if [ "${_elf_ver}" = "${_jail_ver}" ]; then
 		_filelist="${distdir}/share/${platform}-filebases_${_elf_ver}.txt.xz"
-		${ECHO} "${MAGENTA}Trying to populate ${GREEN}${BASE_DIR}${MAGENTA} from current system.${NORMAL}"
-		${ECHO} "${MAGENTA}IDX for:${GREEN}${_elf_ver}${MAGENTA},platform:${GREEN}${platform}${MAGENTA},index:${GREEN}${_filelist}${MAGENTA}. Please wait: ${GREEN}this will take a while...${NORMAL}"
+		${ECHO} "${N1_COLOR}Trying to populate ${N2_COLOR}${BASE_DIR}${N1_COLOR} from current system.${N0_COLOR}"
+		${ECHO} "${N1_COLOR}IDX for:${N2_COLOR}${_elf_ver}${N1_COLOR},platform:${N2_COLOR}${platform}${N1_COLOR},index:${N2_COLOR}${_filelist}${N1_COLOR}. Please wait: ${N2_COLOR}this will take a while...${N0_COLOR}"
 		if [ ! -f "${_filelist}" ]; then
-				${ECHO} "${MAGENTA}Error: no index file: ${GREEN}${_filelist}${NORMAL}"
+				${ECHO} "${N1_COLOR}Error: no index file: ${N2_COLOR}${_filelist}${N0_COLOR}"
 		else
 			copy-binlib filelist=${_filelist} dstdir=${BASE_DIR} basedir=/
 			/usr/bin/truncate -s0 ${BASE_DIR}/etc/sysctl.conf ${BASE_DIR}/etc/fstab ${BASE_DIR}/etc/rc.conf ${BASE_DIR}/etc/rc.conf.local
 			[ -d "${BASE_DIR}/rc.conf.d" ] && /bin/rm -f ${BASE_DIR}/etc/rc.conf.d
 		fi
 	else
-		${ECHO} "${MAGENTA}Base version not equal (${GREEN}base: ${_elf_ver}, jail: ${_jail_ver}${MAGENTA}) with jail, populate base from current system impossible${NORMAL}"
+		${ECHO} "${N1_COLOR}Base version not equal (${N2_COLOR}base: ${_elf_ver}, jail: ${_jail_ver}${N1_COLOR}) with jail, populate base from current system impossible${N0_COLOR}"
 	fi
 }
 
@@ -91,26 +91,11 @@ get_kernel_from_current()
 	[ -x "${KERNEL_DIR}/boot/kernel/kernel" ] && return 0
 
 	if [ "${_elf_ver}" = "${_jail_ver}" ]; then
-		${ECHO} "${MAGENTA}Take kernel from current system for ${GREEN}${KERNEL_DIR}${MAGENTA}. Please wait: ${GREEN}this will take a while...${NORMAL}"
+		${ECHO} "${N1_COLOR}Take kernel from current system for ${N2_COLOR}${KERNEL_DIR}${N1_COLOR}. Please wait: ${N2_COLOR}this will take a while...${N0_COLOR}"
 		/bin/cp -a /boot/kernel ${KERNEL_DIR}/boot/
 	else
-		${ECHO} "${MAGENTA}Base version not equal (${GREEN}base: ${_elf_ver}, jail: ${_jail_ver}${MAGENTA}) with jail, populate kernel from current system impossible${NORMAL}"
+		${ECHO} "${N1_COLOR}Base version not equal (${N2_COLOR}base: ${_elf_ver}, jail: ${_jail_ver}${N1_COLOR}) with jail, populate kernel from current system impossible${N0_COLOR}"
 	fi
-}
-
-
-register_fetched_base()
-{
-	#idx platform name arch ver stable elf date
-	baseelf=
-	baseelf=$( ${miscdir}/elf_tables --ver ${BASE_DIR}/bin/sh 2>/dev/null )
-
-	[ -z "${baseelf}" ] && baseelf="0"
-
-	[ -z "${TARGET_ARCH}" ] && TARGET_ARCH="${arch}"
-
-	#${ECHO} "${MAGENTA}Register base as: ${GREEN}p=$platform,a=$arch,t=$TARGET_ARCH,v=$ver,s=$stable${NORMAL}"
-	register_base arch=${arch} ver=${ver} target_arch=${TARGET_ARCH} stable=${stable} platform="${platform}"
 }
 
 # check for base dir existance
@@ -149,7 +134,7 @@ get_base()
 
 	[ "${ver}" = "empty" ] && return 0
 
-	# fill $BASE_DIR
+	# fill ${BASE_DIR}
 	. ${buildconf}
 	init_basedir
 
@@ -158,15 +143,12 @@ get_base()
 	# check status
 	base_status
 
-	[ $? -eq 3 ] && err 1 "${MAGENTA}Base is not ready, please wait: base status: ${GREEN}3${NORMAL}"
-	${ECHO} "${MAGENTA}No base dir in: ${GREEN}${BASE_DIR}${NORMAL}"
+	[ $? -eq 3 ] && err 1 "${N1_COLOR}Base is not ready, please wait: base status: ${N2_COLOR}3${N0_COLOR}"
+	${ECHO} "${N1_COLOR}No base dir in: ${N2_COLOR}${BASE_DIR}${N0_COLOR}"
+
 	select_getbase
 
-	if [ ! -x "${BASE_DIR}/bin/sh" ]; then
-		err 1 "${MAGENTA}No base data on: ${GREEN}${BASE_DIR}${NORMAL}"
-	else
-		register_fetched_base
-	fi
+	[ ! -x "${BASE_DIR}/bin/sh" ] && err 1 "${N1_COLOR}No base data on: ${N2_COLOR}${BASE_DIR}${N0_COLOR}"
 }
 
 
@@ -199,7 +181,7 @@ get_kernel()
 		fi
 	fi
 
-	[ ! -x "${KERNEL_DIR}/boot/kernel/kernel" ] && err 1 "${MAGENTA}No kernel data on: ${GREEN}${KERNEL_DIR}${NORMAL}"
+	[ ! -x "${KERNEL_DIR}/boot/kernel/kernel" ] && err 1 "${N1_COLOR}No kernel data on: ${N2_COLOR}${KERNEL_DIR}${N0_COLOR}"
 }
 
 
@@ -262,9 +244,9 @@ mountbase()
 		esac
 
 		if [ "${baserw}" = "0" ]; then
-			get_base
+			get_base -v ${ver}
 		else
-			[ ! -f "${path}/bin/sh" ] && get_base
+			[ ! -f "${path}/bin/sh" ] && get_base -v ${ver}
 		fi
 
 		[ ! -d "${path}" ] && /bin/mkdir -p ${path}
@@ -337,12 +319,12 @@ mountbase()
 
 mount_jail_fstab()
 {
-	local _res=$( /usr/local/bin/cbsd mountfstab jroot=${path} fstab=${mount_fstab} jname="${jname}" )
+	local _res=$( mountfstab jroot=${path} fstab=${mount_fstab} jname="${jname}" )
 
 	if [ $? -ne 0 ]; then
 		# force unmount it better then..
 		echo "Invalid fstab file: ${_res}"
-		_res=$( cbsd jcleanup jname=${jname} )
+		_res=$( jcleanup jname=${jname} )
 		continue
 	fi
 
@@ -464,7 +446,7 @@ switch_baserw()
 	_dst=$( /bin/realpath ${1} )
 
 	[ ! -d "${_dst}" ] && return 0
-	get_base
+	get_base -v ${ver}
 
 	# populate
 	if [ "${2}" = "1" ]; then
@@ -475,7 +457,7 @@ ${BASE_DIR}/sys.*|\
 ${BASE_DIR}/proc.*|\
 ${BASE_DIR}/root.*|"
 
-		${ECHO} "${MAGENTA}Populate jail data from: ${GREEN}${BASE_DIR}${NORMAL}"
+		${ECHO} "${N1_COLOR}Populate jail data from: ${N2_COLOR}${BASE_DIR}${N0_COLOR}"
 		[ ! -d "${BASE_DIR}" ] && return 0
 		cd ${BASE_DIR} && /usr/bin/find -E ${BASE_DIR} \( -type f -or -type d -or -type l \) -and -not -regex \"${JAILNODATA}\" -print | /usr/bin/sed s:${BASE_DIR}:./:g | /usr/bin/cpio -pdmu ${_dst}
 
@@ -484,7 +466,7 @@ ${BASE_DIR}/root.*|"
 #		local index_file
 #		index_file="${sharedir}/FreeBSD-filebases_${base_ver}.txt.xz"
 #		if [ ! -r "${index_file}" ]; then
-#			${ECHO} "${MAGENTA}switch_baserw error: no such index file: ${GREEN}${index_file}${NORMAL}"
+#			${ECHO} "${N1_COLOR}switch_baserw error: no such index file: ${N2_COLOR}${index_file}${N0_COLOR}"
 #			return 1
 #		fi
 #		copy-binlib filelist=${index_file} dstdir=${1} basedir=${BASE_DIR} excludedir="/dev|/etc|/sys|/proc|/root"
@@ -527,7 +509,7 @@ usr/share"
 
 		[ -z "${data}" ] && return 0
 
-		${ECHO} "${MAGENTA}Reduce jail data by switching from baserw -> basero: ${GREEN}${data}${NORMAL}"
+		${ECHO} "${N1_COLOR}Reduce jail data by switching from baserw -> basero: ${N2_COLOR}${data}${N0_COLOR}"
 		for i in ${REMOVEDIR}; do
 			[ -d "${data}/${i}" ] && ${CHFLAGS_CMD} -R noschg ${data}/${i} && /bin/rm -rf ${data}/${i}
 		done
@@ -536,12 +518,48 @@ usr/share"
 }
 
 # return getbase_source variable
+# -s args for skip, e.g: -s "repo populate extract"
 select_getbase_source_by_list()
 {
+	local _tmpdir _tmpfile _skip=
+	local _ret _def_method=
+	local i j _get_next
+
+	while getopts "s:" opt; do
+		case "${opt}" in
+			s)
+				_skip="${OPTARG}"
+				;;
+		esac
+		shift $(($OPTIND - 1))
+	done
+
+	# read config
+	readconf ${platform}-bases.conf
+
+	for i in ${default_obtain_base_method}; do
+		_get_next=0
+		for j in ${_skip}; do
+			if [ "${i}" = "${j}" ]; then
+				_get_next=1
+				break
+			fi
+		done
+
+		if [ ${_get_next} -eq 0 ]; then
+			_def_method="${i}"	# get only first method from list: high priority
+			break
+		fi
+	done
+
+	if [ -z "${_def_method}" ]; then
+		getbase_source=
+		return 1
+	fi
 
 	if [ "${inter}" = "0" -o "${INTER}" = "0" ]; then
 		# set default for non interactive action
-		getbase_source="repo"
+		getbase_source="${_def_method}"
 		return 0
 	fi
 
@@ -555,92 +573,175 @@ select_getbase_source_by_list()
 
 	local _method_list=
 
-	${ECHO} "${MAGENTA}${subject}${NORMAL}"
-	echo
-	${ECHO} "${BOLD}0 .. CANCEL${NORMAL}"
+	${ECHO} "${N1_COLOR}${subject}${N0_COLOR}"
 
-	${ECHO} "${BOLD}${i} .. ${GREEN}repo${MAGENTA} (Fetch base from repository over Internet). ${GREEN}(default)${NORMAL}"
-	_method_list="${_method_list} repo"
-	i=$(( i + 1 ))
+	_tmpdir=$( /usr/bin/mktemp -d )
+	_tmpfile=$( /usr/bin/mktemp )
+
+	for i in repo extract build; do
+		if [ "${_def_method}" = "${i}" ]; then
+			echo "1:${i}:" >> ${_tmpdir}/${i}.item
+			printf "${H5_COLOR}*[default] " > ${_tmpdir}/repo.descr
+		else
+			/usr/bin/truncate -s0 ${_tmpdir}/repo.descr
+			echo "0:${i}:" >> ${_tmpdir}/${i}.item
+		fi
+	done
+
+	${ECHO} "${H3_COLOR}fetch base from repository over network${N0_COLOR}" >> ${_tmpdir}/repo.descr
+	${ECHO} "${H3_COLOR}specify path to base dir or archive${N0_COLOR}" >> ${_tmpdir}/extract.descr
+	${ECHO} "${H3_COLOR}cbsd srcup + cbsd world, long method${N0_COLOR}" >> ${_tmpdir}/build.descr
+
 	if [ "${_elf_ver}" = "${_jail_ver}" ]; then
 		local oarch=$( /usr/bin/uname -m )
 		if [ "${arch}" = "${oarch}" ]; then
-			${ECHO} "${BOLD}${i} .. ${GREEN}populate${MAGENTA} (Create base from your host's environment)${NORMAL}"
-			i=$(( i + 1 ))
-			_method_list="${_method_list} populate"
+			if [ "${_def_method}" = "populate" ]; then
+				echo "1:populate:" >> ${_tmpdir}/populate.item
+			else
+				echo "0:populate:" >> ${_tmpdir}/populate.item
+			fi
+			${ECHO} "${H3_COLOR}create base from your host's environment${N0_COLOR}" > ${_tmpdir}/populate.descr
 		fi
-	else
-		${ECHO} "${MAGENTA}(Populating from current environment impossible due to jail version not equal base: hoster:${GREEN}${_elf_ver}${MAGENTA}, jail:${GREEN}:${_jail_ver}${MAGENTA})${NORMAL}"
 	fi
 
-	${ECHO} "${BOLD}${i} .. ${GREEN}extract${MAGENTA} (Specify path to base.txz and extract it)${NORMAL}"
-	i=$(( i + 1 ))
-	_method_list="${_method_list} extract"
-	${ECHO} "${BOLD}${i} .. ${GREEN}build${MAGENTA} (cbsd srcup + cbsd world. Checkout source and build it. Long method)${NORMAL}"
-	_method_list="${_method_list} build"
-	echo
-	printf "${BOLD}Enter id 0-${i} or method name:${NORMAL} "
-	set -e
-	read _id
-	set +e
-
-	[ "${_id}" = "0" ] && exit 0
-	if [ -z "${_id}" ]; then
-		# Empty input, use default
-		getbase_source="repo"
-		return 0
-	fi
+	# todo: rename select_jail to something neutral, due to not only for jail selector
+	select_jail ${_tmpdir} ${_tmpfile} item ${_def_method} 2>/dev/null
+	_ret=$?
+	/bin/rm -rf ${_tmpdir}
 
 	getbase_source=
 
-	if ! is_number ${_id}; then
-		local _tmp _x=0
-		for _tmp in ${_method_list}; do
-			_x=$(( _x + 1 ))
-			[ ${_x} -eq ${_id} ] && getbase_source="${_tmp}" && break
-			[ ${_x} -gt ${i} ] && break
-		done
-	else
-		getbase_source="${_id}"
-	fi
+	case "${_ret}" in
+		0)
+			getbase_source=$( /bin/cat ${_tmpfile} )
+			;;
+		1)
+			# cancel pressed
+			err 0 "${N1_COLOR}select source cancel${N0_COLOR}"
+			;;
+		2)
+			# error
+			err 0 "${N1_COLOR}select source error${N0_COLOR}"
+			;;
+	esac
 
+	/bin/rm -f ${_tmpfile}
 	[ -z "${getbase_source}" ] && return 1
 	return 0
+}
+
+# $1 - path to archive
+extract_base_archive()
+{
+	local _path="${1}"
+
+	[ -z "${BASE_DIR}" ] && err 1 "${N1_COLOR}extract_base_archive: INIT_DIR not initialized${N0_COLOR}"
+
+	[ -z "${_path}" ] && err 1 "${N1_COLOR}extract_base_archive: path in empty${N0_COLOR}"
+
+	if [ ! -r "${_path}" ]; then
+		${ECHO} "${N1_COLOR}extract_base_archive: not readable: ${N2_COLOR}${_path}${N0_COLOR}"
+		return 1
+	fi
+
+	[ ! -d "${BASE_DIR}" ] && /bin/mkdir -p ${BASE_DIR}
+	cd ${BASE_DIR}
+	set -e
+	/usr/bin/tar vxfz ${_path}
+	set +e
+
+	preparebase dst=${BASE_DIR}
+
+	register_base arch=${arch} ver=${ver} target_arch=${TARGET_ARCH} stable=${stable} platform="${platform}" source="${_path}"
 }
 
 select_getbase()
 {
 	local _repeat=1
+	local _path
+	local _url= _url_str= _skip= _cycle=0
 
 	while [ ${_repeat} -ne 0 ]; do
-		select_getbase_source_by_list
 
-		[ $? -ne 0 ] && echo "No valid source"
-		[ "${inter}" = "0" -o "${INTER}" = "0" ] && _repeat=0
+		_cycle=$(( _cycle + 1 ))
+		if [ ${_cycle} -gt 16 ]; then
+			${ECHO} "${N1_COLOR}select_getbase: too many loop, break${N0_COLOR}"
+			_repeat=0	# loop protection
+			continue
+		fi
+
+		select_getbase_source_by_list -s "${_skip}"
+		if [ $? -ne 0 ]; then
+			${ECHO} "${N1_COLOR}select_getbase: no valid source${N0_COLOR}"
+			return 1
+		fi
+
+		if [ "${inter}" = "0" -o "${INTER}" = "0" ]; then
+			# we need special route for non-interactive and
+			# multiple source list.
+			_skip="${_skip} ${getbase_source}"
+		fi
 
 		case "${getbase_source}" in
 			repo)
-				#echo "repo action=get sources=base arch=${arch} ver=${ver} target_arch=${target_arch}"
-				repo action=get sources=base arch=${arch} ver=${ver} target_arch=${target_arch}
+				if [ -n "${default_obtain_base_repo_sources}" ]; then
+					# we must pass it on with one args so that the scan can choose the best one
+					for i in ${default_obtain_base_repo_sources}; do
+						if [ -z "${_url}" ]; then
+							_url="${i}"
+							_url_str="${i}"	# human-friendly is space separated
+						else
+							_url="${_url},${i}"
+							_url_str="${_url_str} ${i}"	# human-friendly is space separated
+						fi
+					done
+					${ECHO} "${N1_COLOR}config-based sources: ${N2_COLOR}${_url_str}${N0_COLOR}"
+					repo action=get sources=base arch=${arch} ver=${ver} target_arch=${target_arch} url="${_url}"
+				else
+					repo action=get sources=base arch=${arch} ver=${ver} target_arch=${target_arch}
+				fi
 				;;
 			populate)
 				get_base_from_current
 				;;
 			extract)
-				${ECHO} "${MAGENTA}Please provide full path to base archive, (e.g. default: ${GREEN}/mnt/usr/freebsd-dist/base.txz${MAGENTA}):${NORMAL}"
-				local _path
-				read _path
-				[ -z "${_path}" ] && _path="/mnt/usr/freebsd-dist/base.txz"
-				if [ ! -r "${_path}" ]; then
-					${ECHO} "${MAGENTA}No such archive file: ${GREEN}${_path}${NORMAL}"
-					continue
+				${ECHO} "${N1_COLOR}Scan for config-based path to base archive: ${N2_COLOR}${default_obtain_base_extract_source}${N1_COLOR}${N0_COLOR}"
+
+				for _path in ${default_obtain_base_extract_source}; do
+					if [ ! -r "${_path}" ]; then
+						${ECHO} "${N1_COLOR}info: no such archive file: ${N2_COLOR}${_path}${N0_COLOR}"
+						continue
+					else
+						${ECHO} "${N1_COLOR}Found: ${N2_COLOR}${_path}${N0_COLOR}"
+						extract_base_archive ${_path}
+					fi
+				done
+
+				# first check
+				if [ -x ${BASE_DIR}/bin/sh ]; then
+					_repeat=0
+					break
 				fi
 
-				[ ! -d "${BASE_DIR}" ] && /bin/mkdir -p ${BASE_DIR}
-				cd ${BASE_DIR}
-				set -e
-				/usr/bin/tar vxfz ${_path}
-				set +e
+				[ "${inter}" = "0" -o "${INTER}" = "0" ] && continue
+
+				# we can ask user for base to base.txz location
+				${ECHO} "${N1_COLOR}Please provide full path to base archive, (e.g. default: ${N2_COLOR}/usr/freebsd-dist/base.txz${N1_COLOR}):${N0_COLOR}"
+				read _path
+				if [ ! -r "${_path}" ]; then
+					${ECHO} "${N1_COLOR}info: no such archive file: ${N2_COLOR}${_path}${N0_COLOR}"
+					continue
+				else
+					${ECHO} "${N1_COLOR}Found: ${N2_COLOR}${_path}${N0_COLOR}"
+					extract_base_archive ${_path}
+				fi
+
+				# second check
+				if [ -x ${BASE_DIR}/bin/sh ]; then
+					_repeat=0
+					break
+				fi
+
 				;;
 			build)
 				local origver stable
@@ -653,20 +754,79 @@ select_getbase()
 				srcup ver=${ver} stable=${stable} && world ver=${ver} arch=${arch} stable=${stable}
 				;;
 			*)
-				${ECHO} "${MAGENTA} select_getbase: unknown source: ${GREEN}${getbase_source}${NORMAL}"
+				${ECHO} "${N1_COLOR} select_getbase: unknown source: ${N2_COLOR}${getbase_source}${N0_COLOR}"
 				;;
 		esac
 
-			if [ -x "${BASE_DIR}/bin/sh" ]; then
-				preparebase dst=${BASE_DIR}
-				_repeat=0
-			fi
+		if [ -x "${BASE_DIR}/bin/sh" ]; then
+			preparebase dst=${BASE_DIR}
+			_repeat=0
+		fi
 	done
 
 	return 0
+}
 
+unset_bsdenv()
+{
+	unset OSVERSION
+	unset UNAME_s
+	unset UNAME_r
+	unset UNAME_v
+	unset release
+}
+
+# set/export OSVERSION UNAME_s UNAME_r UNAME_v RELEASE variable
+# according to version from /bin/sh in specified path
+# -p - chroot path with /bin/sh
+# -v - use version to determine -RELEASE or -STABLE (for jail) in $release
+set_bsdenv_by_path()
+{
+	unset_bsdenv
+	local path
+	local ver
+
+	while getopts "p:v:" opt; do
+		case "${opt}" in
+			p)
+				path="${OPTARG}"
+				;;
+			v)
+				ver="${OPTARG}"
+				;;
+		esac
+		shift $(($OPTIND - 1))
+	done
+
+	if [ -z "${path}" ]; then
+		${ECHO} "${N1_COLOR}set_bsdenv_by_path: empty path${N0_COLOR}"
+		return 1
+	fi
+
+	if [ ! -r "${path}/bin/sh" ]; then
+		${ECHO} "${N1_COLOR}set_bsdenv_by_path: no such /bin/sh here: ${N2_COLOR}${path}${N0_COLOR}"
+		return 1
+	fi
+
+	[ -z "${ver}" ] && ver=$( ${miscdir}/elf_tables --freebsdver /bin/sh 2>/dev/null )
+	local osversion=$( ${miscdir}/elf_tables --ver ${path}/bin/sh 2>/dev/null )
+	local release
+
+	. ${tools}
+
+	if ! is_number ${ver}; then
+		# is stable
+		export RELEASE="${ver}.0-STABLE"
+	else
+		# is release
+		export RELEASE="${ver}-RELEASE"
+	fi
+
+	export OSVERSION=${osversion}
+	export UNAME_s=FreeBSD
+	export UNAME_r=${RELEASE}
+	export UNAME_v="${UNAME_s} ${UNAME_r}"
 }
 
 ###
 fi
-

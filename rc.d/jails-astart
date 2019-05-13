@@ -1,12 +1,5 @@
 #!/usr/local/bin/cbsd
-globalconf="${workdir}/cbsd.conf";
 
-if [ ! -f "${globalconf}" ]; then
-	echo "no globalconf file"
-	exit 1
-fi
-
-. ${globalconf}
 . ${subr}
 . ${strings}
 
@@ -21,7 +14,7 @@ jails_stop() {
 		[ ${jid} -eq 0 ] && continue
 		stoppid="${ftmpdir}/stop.${jname}.$$"
 		if [ "${emulator}" = "bhyve" ]; then
-			$ECHO "${MAGENTA}Auto-stop jail: ${GREEN}${jname}${NORMAL}"
+			$ECHO "${N1_COLOR}Auto-stop jail: ${N2_COLOR}${jname}${N0_COLOR}"
 			env TERM=xterm /usr/sbin/daemon -p ${stoppid} bstop jname=${jname}
 		else
 			/usr/sbin/daemon -p ${stoppid} jstop jname=${jname}
@@ -54,8 +47,8 @@ jails_start() {
 		fi
 	done
 
-	[ -n "${jlist}" ] && task mode=new notify=0 owner=syscbsd cbsd jstart inter=0 ${jlist}
-	[ -n "${blist}" ] && task mode=new notify=0 owner=syscbsd cbsd bstart inter=0 ${blist}
+	[ -n "${jlist}" ] && task mode=new autoflush=1 notify=0 owner=syscbsd cbsd jstart inter=0 ${jlist}
+	[ -n "${blist}" ] && task mode=new autoflush=1 notify=0 owner=syscbsd cbsd bstart inter=0 ${blist}
 }
 
 #### MAIN ####

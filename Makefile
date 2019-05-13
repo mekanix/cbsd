@@ -18,6 +18,10 @@ all:	cbsd dump_cpu_topology dump_iscsi_discovery
 clean:
 	${MAKE} -C bin/cbsdsh clean
 	${RM} -f bin/cbsdsh/.depend*
+
+distclean:
+	${MAKE} -C bin/cbsdsh clean
+	${RM} -f bin/cbsdsh/.depend*
 	${RM} -f misc/chk_arp_byip
 	${RM} -f misc/cbsdtee
 	${RM} -f bin/cbsdsftp
@@ -31,6 +35,7 @@ clean:
 	${RM} -f misc/pwcrypt
 	${RM} -f misc/cbsdlogtail
 	${RM} -f misc/elf_tables
+	${RM} -f misc/fmagic
 	${RM} -f misc/conv2human
 	${RM} -f misc/cbsd_fwatch
 	${RM} -f misc/popcnttest
@@ -42,7 +47,9 @@ clean:
 	${RM} -f tools/vale-ctl
 	${RM} -f tools/nic_info
 	${RM} -f tools/bridge
-	${RM} -f tools/racct-statsd
+	${RM} -f tools/racct-jail-statsd
+	${RM} -f tools/racct-bhyve-statsd
+	${RM} -f tools/racct-hoster-statsd
 	${RM} -f tools/select_jail
 	# clean object files
 	${RM} -f misc/dump_cpu_topology
@@ -74,15 +81,13 @@ cbsd: pkg-config-check
 	${CC} bin/cbsdssh6.c -o bin/cbsdssh6 -lssh2 -L/usr/local/lib -I/usr/local/include && ${STRIP} bin/cbsdssh6
 	${CC} bin/cfetch.c -o bin/cfetch -lfetch -L/usr/local/lib -I/usr/local/include && ${STRIP} bin/cfetch
 	${CC} sbin/netmask.c -o sbin/netmask && ${STRIP} sbin/netmask
-	#${CC} misc/src/sqlcli.c -static -pthread -lsqlite3 -lm -L/usr/local/lib -I/usr/local/include -o misc/sqlcli && ${STRIP} misc/sqlcli
-	# ICU?
-	#${CC} misc/src/sqlcli.c -static -pthread -lsqlite3 -lpthread -licui18n -licuuc -licudata -lm -L/usr/local/lib -I/usr/local/include -o misc/sqlcli && ${STRIP} misc/sqlcli
 	${CC} misc/src/sqlcli.c `pkg-config sqlite3 --cflags --libs` -lm -o misc/sqlcli && ${STRIP} misc/sqlcli
 	${CC} misc/src/cbsdlogtail.c -o misc/cbsdlogtail && ${STRIP} misc/cbsdlogtail
 	${CC} misc/src/pwcrypt.c -lcrypt -o misc/pwcrypt && ${STRIP} misc/pwcrypt
 	${CC} misc/src/chk_arp_byip.c -o misc/chk_arp_byip && ${STRIP} misc/chk_arp_byip
 	${CC} misc/src/cbsdtee.c -o misc/cbsdtee && ${STRIP} misc/cbsdtee
 	${CC} misc/src/elf_tables.c -I/usr/local/include -I/usr/local/include/libelf -L/usr/local/lib -lelf -o misc/elf_tables && ${STRIP} misc/elf_tables
+	${CC} misc/src/fmagic.c -lmagic -o misc/fmagic && ${STRIP} misc/fmagic
 	${CC} misc/src/conv2human.c -I/usr/local/include -I/usr/local/include/libelf -L/usr/local/lib -lelf -o misc/conv2human -lutil && ${STRIP} misc/conv2human
 	${CC} misc/src/cbsd_fwatch.c -o misc/cbsd_fwatch && ${STRIP} misc/cbsd_fwatch
 	${CC} misc/src/popcnttest.c -o misc/popcnttest -msse4.2 && ${STRIP} misc/popcnttest > /dev/null 2>&1 || /usr/bin/true
@@ -93,7 +98,9 @@ cbsd: pkg-config-check
 	${CC} tools/src/bridge.c -o tools/bridge && ${STRIP} tools/bridge
 	${CC} tools/src/vale-ctl.c -o tools/vale-ctl && ${STRIP} tools/vale-ctl
 	${CC} tools/src/nic_info.c -o tools/nic_info && ${STRIP} tools/nic_info
-	${CC} tools/src/racct-statsd.c -lutil -lprocstat -ljail -lsqlite3 -I/usr/local/include -L/usr/local/lib -o tools/racct-statsd && ${STRIP} tools/racct-statsd
+	${CC} tools/src/racct-jail-statsd.c lib/beanstalk-client/beanstalk.c -lutil -lprocstat -ljail -lsqlite3 -I/usr/local/include -Ilib/beanstalk-client -L/usr/local/lib -o tools/racct-jail-statsd && ${STRIP} tools/racct-jail-statsd
+	${CC} tools/src/racct-bhyve-statsd.c lib/beanstalk-client/beanstalk.c -lutil -lprocstat -ljail -lsqlite3 -I/usr/local/include -Ilib/beanstalk-client -L/usr/local/lib -o tools/racct-bhyve-statsd && ${STRIP} tools/racct-bhyve-statsd
+	${CC} tools/src/racct-hoster-statsd.c lib/beanstalk-client/beanstalk.c -lutil -lprocstat -ljail -lsqlite3 -lpthread -I/usr/local/include -Ilib/beanstalk-client -L/usr/local/lib -o tools/racct-hoster-statsd && ${STRIP} tools/racct-hoster-statsd
 	${CC} tools/src/select_jail.c -o tools/select_jail && ${STRIP} tools/select_jail
 	${MAKE} -C bin/cbsdsh && ${STRIP} bin/cbsdsh/cbsd
 	${MAKE} -C share/bsdconfig/cbsd

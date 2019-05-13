@@ -1,6 +1,5 @@
-#!/bin/sh
+#!/usr/local/bin/cbsd
 #v10.1.2
-globalconf="${workdir}/cbsd.conf";
 MYARG=""
 MYOPTARG="ver arch target_arch basename name stable dstdir distribution"
 MYDESC="Create default FreeBSD distribution in .txz files"
@@ -10,14 +9,12 @@ dstdir= for alternative install path in root dir, default - $workdir/tmp\n\
 distribution= \"base kernel ports src\"\n\
 name= name of the kernel\n"
 
-set -e
-. ${globalconf}
-set +e
-
 . ${subr}
 readconf buildworld.conf
-. ${workdir}/universe.subr
-init $*
+
+. ${cbsdinit}
+
+. ${distdir}/universe.subr
 
 over="${ver}"
 oarch="${arch}"
@@ -85,11 +82,11 @@ for i in ${DISTRIBUTION}; do
 	init_${i}
 
 	if [ ! -d "${SRC_DIR}" ]; then
-		${ECHO} "${MAGENTA}No such source dir for ${i}: ${GREEN}${SRC_DIR}${NORMAL}"
+		${ECHO} "${N1_COLOR}No such source dir for ${i}: ${N2_COLOR}${SRC_DIR}${N0_COLOR}"
 		continue
 	fi
 
-	${ECHO} "${MAGENTA}WIP: ${i}, source: ${GREEN}${SRC_DIR}${NORMAL}"
+	${ECHO} "${N1_COLOR}WIP: ${i}, source: ${N2_COLOR}${SRC_DIR}${N0_COLOR}"
 	cd ${SRC_DIR}
 
 	if [ -n "${name}" ]; then
@@ -99,5 +96,5 @@ for i in ${DISTRIBUTION}; do
 	fi
 
 	/usr/bin/tar -cJf ${DST_DIR}/${dstname} .
-	${ECHO} "${MAGENTA} * ${DST_DIR}/${dstname}: ${GREEN}done${NORMAL}"
+	${ECHO} "${N1_COLOR} * ${DST_DIR}/${dstname}: ${N2_COLOR}done${N0_COLOR}"
 done

@@ -4,7 +4,6 @@
 . ${tools}
 . ${nodes}
 
-
 # dialog_menu_main
 #
 # Display the dialog(1)-based application main menu.
@@ -29,7 +28,7 @@ dialog_menu_main()
 	local i=1
 	local num
 
-	eval $( cbsdsql nodes SELECT nodename,ip,idle FROM nodelist | while read _nodename ip idle; do
+	eval $( cbsdsqlro nodes SELECT nodename,ip,idle FROM nodelist | while read _nodename ip idle; do
 		echo "local node${i}_name=\"${_nodename}\""
 		echo "local node${i}_ip=\"${ip}\""
 
@@ -38,7 +37,7 @@ dialog_menu_main()
 		i=$(( i + 1 ))
 	done )
 
-	for i in $( seq 1 255 ); do
+	for i in $( /usr/bin/seq 1 255 ); do
 		eval node_name="\$node${i}_name"
 		[ -z "${node_name}" ] && break
 		eval node_ip="\$node${i}_ip"
@@ -88,9 +87,8 @@ dialog_menu_main()
 ############################################################ MAIN
 export NOCOLOR=1
 
-init $*
-f_include_lang $BSDCFG_LIBE/$APP_DIR/include/messages-nodecfg.subr
-. ${workdir}/bsdconfig.subr
+. ${cbsdinit}
+. ${distdir}/bsdconfig.subr
 
 # Incorporate rc-file if it exists
 [ -f "$HOME/.bsdconfigrc" ] && f_include "$HOME/.bsdconfigrc"
@@ -112,6 +110,7 @@ f_dialog_title " $msg_configure_cbsd "
 f_dialog_backtitle "${ipgm:+bsdconfig }$pgm"
 f_mustberoot_init
 
+. $BSDCFG_LIBE/$APP_DIR/include/messages-nodecfg.subr
 #
 # Loop over the main menu until we've accomplished what we came here to do
 #

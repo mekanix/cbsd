@@ -1,16 +1,11 @@
-#!/bin/sh
+#!/usr/local/bin/cbsd
 #v9.1.0
-globalconf="${workdir}/cbsd.conf";
 MYARG=""
 MYOPTARG="ver arch"
 MYDESC="Ncurses based repo interface"
 
-set -e
-. ${globalconf}
-set +e
-
 . ${subr}
-init $*
+. ${cbsdinit}
 
 DIALOG=${DIALOG=/usr/bin/dialog}
 TMPFILE="${ftmpdir}/inputbox.$$"
@@ -19,7 +14,7 @@ BACKTITLE="--backtitle \Z1${0}\Zn --colors"
 . ${initenv}
 . ${tools}
 . ${buildconf}
-init $*
+. ${cbsdinit}
 
 mainmenu()
 {
@@ -41,7 +36,7 @@ retval=$?
 				[ $choice = "EXIT" ] && exit
 				;;
 			1)
-				err 0 "${MAGENTA}Cancel pressed.${NORMAL}"
+				err 0 "${N1_COLOR}Cancel pressed.${N0_COLOR}"
 				;;
 			255)
 				[ -z "$choice" ] || echo $choice ;

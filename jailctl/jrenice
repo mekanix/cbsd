@@ -11,7 +11,7 @@ ADDHELP="nice=[new value]\n\
 . ${subr}
 . ${strings}
 
-init $*
+. ${cbsdinit}
 
 . ${jrcconf}
 [ "${emulator}" != "jail" ] && log_err 1 "${MAGENTA}Not in jail emulator: ${GREEN}${emulator}{NORMAL}"
@@ -19,7 +19,7 @@ init $*
 
 if [ -z "${nice}" ]; then
 	_formfile="${jailsysdir}/${jname}/helpers/jrctl.sqlite"
-	[ -r "${_formfile}" ] && nice=$( cbsdsql ${_formfile} "SELECT cur FROM forms WHERE param=\"nice\"" )
+	[ -r "${_formfile}" ] && nice=$( cbsdsqlro ${_formfile} "SELECT cur FROM forms WHERE param=\"nice\"" )
 	# just reset
 	[ -z "${nice}" ] && nice="0"
 fi

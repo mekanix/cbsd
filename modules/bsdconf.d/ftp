@@ -1,19 +1,13 @@
-#!/bin/sh
+#!/usr/local/bin/cbsd
 #v10.0.4
-globalconf="${workdir}/cbsd.conf";
 CBSDMODULE="bsdconf"
 MYARG="mode"
 MYOPTARG="jname dns port"
 MYDESC="Install timezone helper"
 ADDHELP="mode can be: on, off, status\n"
 
-set -e
-. ${globalconf}
-set +e
-
 . ${subr}
-. ${strings}
-init $*
+. ${cbsdinit}
 
 #defines
 _MYDIR=$(dirname `realpath $0`)
@@ -28,18 +22,17 @@ SERVICE="ftp"
 
 CFG="/usr/local/etc/${SERVICE}.ini"
 
-
 if [ -z "${jname}" ]; then
 	root_path=""
 	exec_cmd=""
 else
 	. ${jrcconf}
-	[ $? -eq 1 ] && err 1 "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
-	[ $jid -eq 0 ] && err 1 "${MAGENTA}Jail is not active: ${GREEN}${jname}${NORMAL}"
+	[ $? -eq 1 ] && err 1 "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
+	[ $jid -eq 0 ] && err 1 "${N1_COLOR}Jail is not active: ${N2_COLOR}${jname}${N0_COLOR}"
 
 
 	if [ "${emulator}" != "jail" -a -n "${emulator}" -a "${emulator}" != "bhyve" ]; then
-		. ${workdir}/emulator.subr
+		. ${distdir}/emulator.subr
 		init_usermode_emul
 		exec_cmd="/usr/sbin/jexec ${jid} /bin/${emulator}"
 	else

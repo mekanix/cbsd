@@ -7,12 +7,13 @@ MYDESC="Dialog based UI for RACCR/RCTL"
 
 . ${subr}
 . ${tools}
+. ${strings}
 
 [ -z "${1}" ] && select_jail_by_list -s "List of local VMs:" -r 0 -e bls
-init $*
+. ${cbsdinit}
 
 . ${jrcconf}
-[ $? -eq 1 ] && err 1 "${MAGENTA}No such bhyve: ${GREEN}${jname}${NORMAL}"
+[ $? -eq 1 ] && err 1 "${N1_COLOR}No such bhyve: ${N2_COLOR}${jname}${N0_COLOR}"
 
 forms module=brctl jname=${jname} updcol=cur
 #brenice jname=${jname}

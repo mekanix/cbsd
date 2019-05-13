@@ -1,18 +1,15 @@
 #!/usr/local/bin/cbsd
-#v10.1.2
-globalconf="${workdir}/cbsd.conf";
+#v12.0.4
 MYARG="jroot fstab"
 MYOPTARG="jname"
 MYDESC="Mount jail by fstab file"
 ADDHELP="jroot - root of jail, fstab - fstab file\n"
 
-set -e
-. ${globalconf}
-set +e
-
 . ${subr}
+
+. ${cbsdinit}
+
 . ${system}
-init $*
 
 [ ! -f "${fstab}" ] && err 1 "${fstab} does not exist"
 [ ! -d "${jroot}" ] && err 1 "${jroot} does not exist"
@@ -32,6 +29,14 @@ init_localmpt_fstab()
 
 	local i=0
 
+	# check for CRLF at the end of file
+	_ret=$( /usr/bin/tail -n1 "${fstab}.local" )
+
+	if [ -n "${_ret}" ]; then
+		# append CRLF for proper while read loop
+		printf '\n' >> "${fstab}.local"
+	fi
+
 	# always rewrite CBSDROOT first
 	replacewdir file0="${fstab}.local" old="CBSDROOT"
 
@@ -45,6 +50,10 @@ init_localmpt_fstab()
 			;;
 			*)
 				if [ "${_fs}" = "zfs" ]; then
+					if [ ${allow_zfs} -ne 1 ]; then
+						# allow_zfs not enabled, skipp
+						continue
+					fi
 					# we need special route for jails with zfs attach, make sign for jstart script
 					/usr/bin/touch ${with_zfs_attach}
 					continue
@@ -80,6 +89,14 @@ check_for_localmpt_fstab()
 }
 
 ## MAIN
+# check for CRLF at the end of file
+_ret=$( /usr/bin/tail -c1 "${fstab}" )
+
+if [ -n "${_ret}" ]; then
+	# append CRLF for proper while read loop
+	printf '\n' >> "${fstab}"
+fi
+
 init_localmpt_fstab
 
 # always rewrite CBSDROOT first
@@ -94,7 +111,10 @@ replacewdir file0="${fstab}" old="CBSDROOT"
 		;;
 	*)
 		if [ "${_fs}" = "zfs" ]; then
-			[ ${allow_zfs} -ne 1 ] && ${ECHO} "${MAGENTA}Warning: fstab have zfs: ${GREEN}${_device}${MAGENTA}, but ${GREEN}allow_zfs=0${MAGENTA}. Please enable it.${NORMAL}"
+			if [ ${allow_zfs} -ne 1 ]; then
+				#${ECHO} "${W1_COLOR}Warning: ${N1_COLOR}fstab have zfs: ${N2_COLOR}${_device}${N1_COLOR}, but ${N2_COLOR}allow_zfs=0${N1_COLOR}. Please enable it.${N0_COLOR}"
+				continue
+			fi
 			# we need special route for jails with zfs attach, make sign for jstart script
 			/usr/bin/touch ${with_zfs_attach}
 			continue
@@ -150,24 +170,20 @@ done
 		mnt=1
 	fi
 
-	if [ ${mnt} -eq 0 ]; then
+	[ ${mnt} -eq 1 ] && continue
 
-		# /usr/compat - work-around for migrate from /usr/compat -> /compat introduced in CBSD 11.0.16
-		if [ "${_mountpt}" != "/usr/compat" ]; then
-			[ ! -d "${jroot}${_mountpt}" ] && /bin/mkdir -p "${jroot}${_mountpt}"
+	# /usr/compat - work-around for migrate from /usr/compat -> /compat introduced in CBSD 11.0.16
+	[ "${_mountpt}" = "/usr/compat" ] && _mountpt="/compat"
+
+	if [ ! -d "${jroot}${_mountpt}" ]; then
+		/bin/mkdir -p "${jroot}${_mountpt}"
+		_ret=$?
+		if [ ${_ret} -ne 0 ]; then
+			${ECHO} "${W1_COLOR}Warning: ${N1_COLOR}mountfstab: unable to create mountpoint for ${_fs} ${_device}: ${N2_COLOR}${jroot}${_mountpt}${N0_COLOR}"
+			${ECHO} "${W1_COLOR}Warning: ${N1_COLOR}mountfstab: read-only location? Skip mount for ${jroot}${_mountpt}${N0_COLOR}"
+			continue
 		fi
-
-		if [ ! -d "${jroot}${_mountpt}" ]; then
-
-			# /usr/compat - work-around for migrate from /usr/compat -> /compat introduced in CBSD 11.0.16
-			if [ "${_mountpt}" = "/usr/compat" ]; then
-				_mountpt="/compat"
-				[ ! -d "${jroot}${_mountpt}" ] && /bin/mkdir -p "${jroot}${_mountpt}"
-			else
-				echo "Warning: Can't create ${jroot}${_mountpt} - permission problem ?"
-			fi
-		fi
-
-		/sbin/mount -t ${_fs} -o${_mode} ${_device} ${jroot}${_mountpt}
 	fi
+
+	/sbin/mount -t ${_fs} -o${_mode} ${_device} ${jroot}${_mountpt}
 done

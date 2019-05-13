@@ -6,11 +6,10 @@ MYDESC="Exec login into jail"
 CBSDMODULE="xen"
 
 . ${subr}
-init $*
 
-. ${strings}
-. ${workdir}/xen.subr
-. ${tools}
+. ${cbsdinit}
+
+. ${distdir}/xen.subr
 . ${dialog}
 
 ### MAIN ###
@@ -18,6 +17,6 @@ init $*
 [ -z "$jname" ] && select_jail_by_list -s "List of local jails:" -r 0 -e xls
 [ -z "$jname" ] && err 1 "Please specify jname"
 . ${jrcconf}
-[ "${emulator}" != "xen" ] && err 1 "${MAGENTA}Only for xen type VMs${NORMAL}"
+[ "${emulator}" != "xen" ] && err 1 "${N1_COLOR}Only for xen type VMs${N0_COLOR}"
 
 exec bsdconfig xendsk jname="${jname}"

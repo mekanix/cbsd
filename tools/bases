@@ -7,14 +7,15 @@ CBSDMODULE="sys"
 ADDHELP="shownode=1 - show nodename for jails\n\
 node= only for current node\n\
 header=0 don't print header\n\
-display= list by comma for column. Default: platform,name,arch,targetarch,ver,stable,elf,status,date\n"
+display= list by comma for column. Default: platform,name,arch,targetarch,ver,stable,elf,status,date\n\
+  additional: source\n"
 
 . ${subr}
 . ${system}
 . ${strings}
 . ${tools}
 
-init $*
+. ${cbsdinit}
 
 [ -z "${display}" ] && display="platform,name,arch,targetarch,ver,stable,elf,status,date"
 
@@ -26,7 +27,7 @@ myheader=$( echo ${mydisplay} | /usr/bin/tr '[:lower:]' '[:upper:]' )
 
 show_header()
 {
-	local _header="${WHITE}${BOLD}${myheader}${NORMAL}"
+	local _header="${H1_COLOR}${BOLD}${myheader}${N0_COLOR}"
 	[ ${header} -ne 0 ] && ${ECHO} "${_header}"
 }
 
@@ -39,12 +40,11 @@ populate_output_data()
 
 	#populate values for in output string
 	for _i in ${mydisplay}; do
-		_val=""
+		_val=
 		eval _val=\$$_i
 		[ -z "${_val}" ] && _val="-"
-
 		if [ -z "${_status}" ]; then
-			_status="${NORMAL}${_val}"
+			_status="${N0_COLOR}${_val}"
 		else
 			_status="${_status} ${_val}"
 		fi
@@ -66,13 +66,21 @@ show_basesdata_from_sql()
 		sqlfile="local"
 	fi
 
-	_sql="SELECT platform,name,arch,targetarch,ver,stable,elf,status,date FROM bsdbase"
-	cbsdsql ${sqlfile} ${_sql}| while read platform name arch targetarch ver stable elf status date; do
+	_sql="SELECT platform,name,arch,targetarch,ver,stable,elf,status,date,source FROM bsdbase"
+
+	OIFS="${IFS}"
+	IFS="|"
+	sqldelimer="|"
+
+	cbsdsqlro ${sqlfile} ${_sql} | while read platform name arch targetarch ver stable elf status date source; do
+		IFS="${OIFS}"
 		populate_output_data
-		printf "${GREEN}"
+		printf "${N2_COLOR}"
 		printf "${_status}"
-		printf "${NORMAL}\n"
+		printf "${N0_COLOR}\n"
+		IFS="|"
 	done
+	IFS="${OIFS}"
 }
 
 show_remote()
@@ -107,5 +115,4 @@ show_bases()
 
 #### MAIN
 [ -z "${header}" ] && header=1
-sqldelimer=" "
 show_bases | /usr/bin/column -t

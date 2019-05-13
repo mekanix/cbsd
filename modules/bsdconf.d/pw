@@ -1,6 +1,6 @@
 #!/usr/local/bin/cbsd
 #v11.0.0
-globalconf="${workdir}/cbsd.conf"
+globalconf="${distdir}/cbsd.conf"
 CBSDMODULE="bsdconf"
 MYARG=""
 MYOPTARG="jname"
@@ -9,9 +9,9 @@ ADDHELP="jname= work in with jail\n"
 EXTHELP="modules/bsdconf.d.html"
 
 . ${subr}
-. ${strings}
+. ${cbsdinit}
+
 . ${system}
-init $*
 
 #defines
 _MYDIR=$( /usr/bin/dirname `/bin/realpath $0` )
@@ -45,12 +45,12 @@ while [ $maxarg -ne 0 ]; do
 	maxarg=$(( maxarg - 1 ))
 done
 
-[ -z "${cmd}" -a -z "${fromfile}" ] && err 1 "${MAGENTA}Empty command${NORMAL}"
+[ -z "${cmd}" -a -z "${fromfile}" ] && err 1 "${N1_COLOR}Empty command${N0_COLOR}"
 
 ## MAIN ##
 if [ -n "${jname}" ]; then
 	. ${jrcconf}
-	[ $? -eq 1 ] && err 1 "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
+	[ $? -eq 1 ] && err 1 "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
 
 	[ $baserw -eq 1 ] && path=$data
 
@@ -58,7 +58,7 @@ if [ -n "${jname}" ]; then
 		set -e
 			. ${_MYDIR}/bsdconf.subr
 		set +e
-		. ${workdir}/universe.subr
+		. ${distdir}/universe.subr
 		readconf buildworld.conf
 		init_target_arch
 		init_srcdir
@@ -68,7 +68,7 @@ if [ -n "${jname}" ]; then
 	fi
 
 	if [ "${emulator}" != "jail" -a -n "${emulator}" -a "${emulator}" != "bhyve" ]; then
-		. ${workdir}/emulator.subr
+		. ${distdir}/emulator.subr
 		init_usermode_emul
 		CHROOT_EXEC="/usr/sbin/chroot ${path} /bin/${emulator}"
 	else

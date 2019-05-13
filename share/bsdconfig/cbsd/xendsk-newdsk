@@ -72,7 +72,7 @@ MYOPTARG=""
 MYDESC="Add and attach new vitual image to VM"
 CBSDMODULE="xen"
 
-globalconf="${workdir}/cbsd.conf";
+globalconf="${distdir}/cbsd.conf";
 
 set -e
 . ${globalconf}
@@ -81,19 +81,19 @@ set +e
 . ${subr}
 . ${strings}
 . ${tools}
-init $*
+. ${cbsdinit}
 
 . ${dialog}
-. ${workdir}/bsdconfig.subr
+. ${distdir}/bsdconfig.subr
 f_include_lang $BSDCFG_LIBE/$APP_DIR/include/messages-xendsk.subr
 
 . ${jrcconf}
-[ $? -eq 1 ] && err 1 "${MAGENTA}No such VM: ${GREEN}${jname}${NORMAL}"
-[ "${emulator}" != "xen" ] && err 1 "${MAGENTA}Not in xen mode${NORMAL}"
+[ $? -eq 1 ] && err 1 "${N1_COLOR}No such VM: ${N2_COLOR}${jname}${N0_COLOR}"
+[ "${emulator}" != "xen" ] && err 1 "${N1_COLOR}Not in xen mode${N0_COLOR}"
 
 . $BSDCFG_LIBE/$APP_DIR/include/xendsk.subr
 
-. ${workdir}/xen.subr
+. ${distdir}/xen.subr
 
 #load_dsk_info
 

@@ -1,23 +1,17 @@
 #!/usr/local/bin/cbsd
-#v11.1.2
-globalconf="${workdir}/cbsd.conf";
+#v12.0.4
 MYARG=""
 MYOPTARG="jname inter"
-MYDESC="Destroy jail"
-CBSDMODULE="jail"
+MYDESC="Destroy bhyve domain"
+CBSDMODULE="bhyve"
 EXTHELP="wf_bremove.html"
 
-set -e
-. ${globalconf}
-set +e
-
 . ${subr}
-. ${jfs}
-. ${strings}
-. ${tools}
+. ${tools}	# for select_jail_by_list
 
 if [ -z "${1}" ]; then
 	select_jail_by_list -s "List of local VMs:" -e bls -r ${sqlreplica}
+	[ -z "${jname}" ] && err 1 "${N1_COLOR}No such domains${N0_COLOR}"
 	if getyesno "Remove VM ${jname}. Are you sure? "; then
 		echo
 	else
@@ -25,7 +19,9 @@ if [ -z "${1}" ]; then
 	fi
 fi
 
-init $*
+. ${cbsdinit}
+
+. ${jfs}
 
 [ -n "${inter}" ] && shift
 
@@ -44,7 +40,8 @@ else
 fi
 
 [ -z "${JLIST}" ] && err 1 "Give me jname"
-[ -z "${cbsd_queue_name}" ] && cbsd_queue_name="/clonos/bhyvevms/"
+readconf cbsd_queue.conf
+[ -z "${cbsd_bhyve_queue_name}" ] && cbsd_bhyve_queue_name="/clonos/bhyvevms/"
 
 for jname in ${JLIST}; do
 	st_time=$( /bin/date +%s )
@@ -61,25 +58,25 @@ for jname in ${JLIST}; do
 		if [ ! -f "${JAILRCCONF}" ]; then
 			# remote?
 			if [ ${sqlreplica} -eq 0 ]; then
-				${ECHO} "${MAGENTA}No such domain: ${GREEN}${jname}${NORMAL}"
+				${ECHO} "${N1_COLOR}No such domain: ${N2_COLOR}${jname}${N0_COLOR}"
 				continue
 			fi
 			remotenode=$( bwhereis ${jname} )
 			if [ -z "${remotenode}" ]; then
-				${ECHO} "${MAGENTA}No such domain: ${GREEN}${jname}${NORMAL}"
+				${ECHO} "${N1_COLOR}No such domain: ${N2_COLOR}${jname}${N0_COLOR}"
 				continue
 			fi
 			for i in ${remotenode}; do
 				if [ "${i}" = "${nodename}" ]; then
-					${ECHO} "${MAGENTA}Remote bremove: found on nodename ${GREEN}${nodename}${MAGENTA}. Skipped${NORMAL}"
+					${ECHO} "${N1_COLOR}Remote bremove: found on nodename ${N2_COLOR}${nodename}${N1_COLOR}. Skipped${N0_COLOR}"
 					continue
 			fi
-			${ECHO} "${MAGENTA}Remote jremove: ${GREEN}${jname} ${MAGENTA}on${GREEN} ${i}${NORMAL}"
+			${ECHO} "${N1_COLOR}Remote jremove: ${N2_COLOR}${jname} ${N1_COLOR}on${N2_COLOR} ${i}${N0_COLOR}"
 			rexe node=${i} cbsd bremove jname=${jname}
 			if [ $? -eq 0 ]; then
 				# updating state and put task for retrinv inventory
-				${ECHO} "${MAGENTA}Updating inventory...${NORMAL}"
-				task mode=new retrinv node=${i} tryoffline=1 data=db > /dev/null 2>&1
+				${ECHO} "${N1_COLOR}Updating inventory...${N0_COLOR}"
+				task autoflush=2 mode=new retrinv node=${i} tryoffline=1 data=db > /dev/null 2>&1
 			fi
 			done
 			continue
@@ -90,32 +87,32 @@ for jname in ${JLIST}; do
 	fi
 
 	if [ "${protected}" = "1" ]; then
-		${ECHO} "${MAGENTA}Protected/locked jail. Skip for remove: ${GREEN}${jname}${NORMAL}"
+		${ECHO} "${N1_COLOR}Protected/locked jail. Skip for remove: ${N2_COLOR}${jname}${N0_COLOR}"
 		continue
 	fi
 
 	# CBSD QUEUE
 	if [ -x "${moduledir}/cbsd_queue.d/cbsd_queue" ]; then
-		[ "${cbsd_queue_name}" != "none" ] && cbsd_queue cbsd_queue_name=${cbsd_queue_name} id=${jname} cmd=bremove status=1
+		[ "${cbsd_bhyve_queue_name}" != "none" ] && cbsd_queue cbsd_bhyve_queue_name=${cbsd_bhyve_queue_name} id=${jname} cmd=bremove status=1
 	fi
 
 	if [ $? -eq 1 ]; then
 		if [ ! -f "${JAILRCCONF}" ]; then
-			if [ $sqlreplica -eq 0 ]; then
-				${ECHO} "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
+			if [ ${sqlreplica} -eq 0 ]; then
+				${ECHO} "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
 				continue
 			fi
 			remotenode=$( jwhereis ${jname} )
 			if [ -z "${remotenode}" ]; then
-				${ECHO} "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
+				${ECHO} "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
 				continue
 			fi
 			for i in ${remotenode}; do
 				if [ "${i}" = "${nodename}" ]; then
-					${ECHO} "${MAGENTA}Remote bremove: found on nodename ${GREEN}${nodename}${MAGENTA}. Skipped${NORMAL}"
+					${ECHO} "${N1_COLOR}Remote bremove: found on nodename ${N2_COLOR}${nodename}${N1_COLOR}. Skipped${N0_COLOR}"
 					continue
 				fi
-				${ECHO} "${MAGENTA}Remote bremove: ${GREEN}${jname} ${MAGENTA}on${GREEN} ${i}${NORMAL}"
+				${ECHO} "${N1_COLOR}Remote bremove: ${N2_COLOR}${jname} ${N1_COLOR}on${N2_COLOR} ${i}${N0_COLOR}"
 				rexe node=${i} /usr/local/bin/cbsd bremove jname=${jname}
 			done
 			exit 0
@@ -125,11 +122,11 @@ for jname in ${JLIST}; do
 		fi
 	fi
 
-	. ${workdir}/jcreate.subr
+	. ${distdir}/jcreate.subr
 	export_bhyve_data_for_external_hook
 	external_exec_master_script "remove.d"
 
-	PARRENT_SNAPSHOTS=""
+	PARENT_SNAPSHOTS=""
 	DEPENDENT_VMS=""
 	if [ ${unregister} -eq 0 ] ; then
 		if [  ${jid} -ne 0 ]; then
@@ -138,7 +135,7 @@ for jname in ${JLIST}; do
 					bstop jname=${jname}
 					;;
 				"virtualbox")
-					. ${workdir}/virtualbox.subr
+					. ${distdir}/virtualbox.subr
 					vstop jname=${jname}
 					;;
 				*)
@@ -148,16 +145,17 @@ for jname in ${JLIST}; do
 		fi
 		# auto-promote if we have children
 		if [ ${zfsfeat} -eq 1 ]; then
-			base_vm_disks=$( cbsdsql storage_media SELECT path FROM media WHERE jname=\"${jname}\" and type=\"hdd\" )
-			for vm_item in $( cbsdsql storage_media SELECT jname,path FROM media WHERE jname!=\"${jname}\" and type=\"hdd\" ); do
+			base_vm_disks=$( cbsdsqlro storage_media SELECT path FROM media WHERE jname=\"${jname}\" and type=\"hdd\" )
+			for vm_item in $( cbsdsqlro storage_media SELECT jname,path FROM media WHERE jname!=\"${jname}\" and type=\"hdd\" ); do
 				vm=$( echo ${vm_item} | /usr/bin/cut -f 1 -d '|' )
 				disk_path=$( echo ${vm_item} | /usr/bin/cut -f 2 -d '|' )
-				disk_zvol=$( readlink -f ${disk_path} | /usr/bin/sed 's;^/dev/zvol/;;' )
-				parrent_snapshot=$( /sbin/zfs get -Ho value origin ${disk_zvol} )
-				if [ "${parrent_snapshot}" = "-" ]; then
+				disk_zvol=$( /usr/bin/readlink -f ${disk_path} | /usr/bin/sed 's;^/dev/zvol/;;' )
+				parent_snapshot=$( /sbin/zfs get -Ho value origin ${disk_zvol} )
+				if [ "${parent_snapshot}" = "-" ]; then
 					continue
 				fi
-				original_disk=$( echo ${parrent_snapshot} | /usr/bin/sed "s;@cbsd-original-${vm}-dsk.*\.vhd;;g" )
+
+				original_disk=$( echo ${parent_snapshot} | /usr/bin/sed "s;@cbsd-original-${vm}-dsk.*\.vhd;;g" )
 				for _disk_path in ${base_vm_disks}; do
 					original_disk_path=$( /usr/bin/readlink -f ${_disk_path} )
 					if [ "/dev/zvol/${original_disk}" = "${original_disk_path}" ]; then
@@ -165,25 +163,42 @@ for jname in ${JLIST}; do
 					fi
 				done
 			done
+
 			if [ ! -z "${DEPENDENT_VMS}" ]; then
 				dep_vms=$( echo ${DEPENDENT_VMS} | /usr/bin/sort | /usr/bin/uniq )
-				err 1 "${MAGENTA}The following machines depend on ${jname}:${NORMAL} ${dep_vms}" >&2
+				err 1 "${N1_COLOR}The following machines depend on ${jname}:${N0_COLOR} ${dep_vms}" >&2
 			fi
+
 			for disk_path in ${base_vm_disks}; do
+				[ ! -r ${disk_path} ] && continue
 				disk_zvol=$( /usr/bin/readlink -f ${disk_path} | /usr/bin/sed 's;^/dev/zvol/;;' )
-				parrent_snapshot=$( /sbin/zfs get -Ho value origin ${disk_zvol} )
-				if [ "${parrent_snapshot}" != "-" ]; then
-					PARRENT_SNAPSHOTS="${PARRENT_SNAPSHOTS} ${parrent_snapshot}"
+				parent_snapshot=$( /sbin/zfs get -Ho value origin ${disk_zvol} )
+				if [ "${parent_snapshot}" != "-" ]; then
+					PARENT_SNAPSHOTS="${PARENT_SNAPSHOTS} ${parent_snapshot}"
 				fi
 			done
 
-			path_parrent=$( /sbin/zfs get -Ho value origin ${DST} )
-			if [ "${path_parrent}" != "-" ]; then
-				PARRENT_SNAPSHOTS="${PARRENT_SNAPSHOTS} ${path_parrent}"
+			path_parent=$( /sbin/zfs get -Ho value origin ${DST} )
+			if [ "${path_parent}" != "-" ]; then
+				PARENT_SNAPSHOTS="${PARENT_SNAPSHOTS} ${path_parent}"
 			fi
 		fi
 		jcleanup jname=${jname}
 		/sbin/umount ${path} 2>/dev/null
+	fi
+
+	# jailed process?
+	# if we are not inside jail then check for jailed bhyve and remove hoster jail
+	_jailed="0"	# no hoster jail
+	pjailed=$( /sbin/sysctl -qn security.jail.jailed 2>/dev/null )
+	[ -z "${pjailed}" ] && pjailed=0
+
+	if [ "${pjailed}" = "0" ]; then
+		# we a not jailed
+		# bhyve is jailed and has jail?
+		_jailed=$( cbsdsqlro ${jailsysdir}/${jname}/local.sqlite "SELECT jailed FROM settings LIMIT 1" )
+		[ -z "${_jailed}" ] && _jailed="0"
+		# when _jailed != 0 use this variable to jremove at the end of the scenatio
 	fi
 
 	[ -d "${DST}" ] && removedata ${DST} force
@@ -196,18 +211,18 @@ for jname in ${JLIST}; do
 	[ -d "${jailsysdir}/${jname}" ] && /bin/rm -rf "${jailsysdir}/${jname}"
 	[ -f "${logdir}/${jname}.log" ] && /bin/rm -f "${logdir}/${jname}.log"
 	[ -d "${jaildir}/${jname}" ] && /bin/rmdir "${jaildir}/${jname}"
-	for parrent_snapshot in ${PARRENT_SNAPSHOTS}; do
-		/sbin/zfs destroy ${parrent_snapshot}
+	for parent_snapshot in ${PARENT_SNAPSHOTS}; do
+		/sbin/zfs destroy ${parent_snapshot}
 	done
 
 	# detach ppt
-	cbsdsql local "DELETE FROM bhyveppt WHERE jname=\"${jname}\""
+	cbsdsqlrw local "DELETE FROM bhyveppt WHERE jname=\"${jname}\""
 
 	if [ "${emulator}" != "jail" ]; then
 		# TODO: cbsd media unregister mode=removeall jname=jname
-		cbsdsql storage_media "DELETE FROM media WHERE jname=\"${jname}\" AND type = \"hdd\""
+		cbsdsqlrw storage_media "DELETE FROM media WHERE jname=\"${jname}\" AND type = \"hdd\""
 
-		A=$( cbsdsql storage_media SELECT name,path FROM media WHERE jname=\"${jname}\" AND type=\"iso\" )
+		A=$( cbsdsqlro storage_media SELECT name,path FROM media WHERE jname=\"${jname}\" AND type=\"iso\" )
 		if [ -n "${A}" ]; then
 			cd_name=
 			cd_path=
@@ -219,19 +234,25 @@ for jname in ${JLIST}; do
 	fi
 
 	if [ "${emulator}" = "virtualbox" ]; then
-		. ${workdir}/virtualbox.subr
+		. ${distdir}/virtualbox.subr
 		${VBOX_MGMT_CMD} unregistervm ${jname}
 		[ -d "/root/VirtualBox VMs/${jname}" ] && /bin/rm -rf "/root/VirtualBox VMs/${jname}"
 	fi
 
 	# CBSD QUEUE
 	if [ -x "${moduledir}/cbsd_queue.d/cbsd_queue" ]; then
-		[ "${cbsd_queue_name}" != "none" ] && cbsd_queue cbsd_queue_name=${cbsd_queue_name} id=${jname} cmd=bremove status=2
+		[ "${cbsd_bhyve_queue_name}" != "none" ] && cbsd_queue cbsd_bhyve_queue_name=${cbsd_bhyve_queue_name} id=${jname} cmd=bremove status=2
 	fi
 
 	end_time=$( /bin/date +%s )
 	cbsdlogger NOTICE ${CBSD_APP}: bhyve domain ${jname} removed in $(( end_time - st_time ))s
 
+	if [ "${_jailed}" != "0" ]; then
+		${ECHO} "${N1_COLOR}remove hoster jail: ${N2_COLOR}${_jailed}${N0_COLOR}"
+		cbsdlogger NOTICE ${CBSD_APP}: remove bhyve [${jname}] hoster jail: ${_jailed}
+		jset protected=0 jname=${_jailed}
+		jremove jname="${_jailed}"
+	fi
 done
 
 exit 0

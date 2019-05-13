@@ -1,18 +1,19 @@
 #!/usr/local/bin/cbsd
-#v11.0.5
-globalconf="${workdir}/cbsd.conf";
+#v12.0.4
 MYARG="mode"
 MYOPTARG="fromfile jname login fullname group uid secgroup shell pw epw"
 MYDESC="Add user to jail"
-ADDHELP="mode can be: remove, add, show\n"
+ADDHELP="mode can be: remove, add, show\n\
+pw - plain password, or\n\
+epw - encrypted password\n"
 
 . ${subr}
-. ${strings}
-. ${system}
-init $*
 
-#defines
-_MYDIR=$(dirname `realpath $0`)
+. ${cbsdinit}
+
+. ${system}
+
+_MYDIR=$( /usr/bin/dirname `/bin/realpath $0` )
 SERVICE="adduser"
 
 f_getvar()
@@ -30,16 +31,17 @@ f_getvar()
 check_jaildir()
 {
 	local check_file="${path}/etc/master.passwd ${path}/etc/passwd ${path}/etc/group ${path}/usr/sbin/pw"
-	local i
+	local _i
 	local ret=0
 
-	for i in $check_file; do
-		[ ! -f "${i}" ] && echo ${i} && ret=1
+	for _i in ${check_file}; do
+		[ ! -f "${_i}" ] && echo ${_i} && ret=1
 	done
 
 	return ${ret}
 }
 
+# not for multiple action
 getpw()
 {
 	local _oldmodes=$( /bin/stty -g ) _try=0
@@ -47,14 +49,14 @@ getpw()
 	_try=0
 
 	while [ ${_try} -ne 3 ]; do
-		printf "${BOLD}Enter password:${NORMAL}"
+		printf "${BOLD}Enter password:${N0_COLOR}"
 		while [ -z "${npw}" ]; do
 			#/bin/stty -echo
 			read npw
 			/bin/stty ${_oldmodes}
 		done
 
-		printf "\n${BOLD}Re-enter password: ${NORMAL}"
+		printf "\n${BOLD}Re-enter password: ${N0_COLOR}"
 		while [ -z "${tpw}" ]; do
 			/bin/stty -echo
 			read tpw
@@ -63,7 +65,7 @@ getpw()
 
 		[ "${tpw}" = "${npw}" ] && pw="${npw}" && break
 
-		printf "\n${MAGENTA}Wrong password${NORMAL}\n"
+		printf "\n${N1_COLOR}Wrong password${N0_COLOR}\n"
 		unset npw tpw
 		_try=$(( _try + 1 ))
 	done
@@ -77,22 +79,20 @@ getpw()
 # opt: uid, fullname, group, secgroup, shell
 c_adduser()
 {
-	local _res
+	local _res _ret
 
-	[ -z "${login}" ] && ${ECHO} "${GREEN}login= ${MAGENTA} is mandatory${NORMAL}" && return 1
-
-	echo " $exec_cmd user show $login "
+	[ -z "${login}" ] && ${ECHO} "${N2_COLOR}login= ${N1_COLOR} is mandatory${N0_COLOR}" && return 1
 
 	_res=$( ${exec_cmd} user show ${login} 2>&1)
 	case $? in
 		0)
-			${ECHO} "${MAGENTA}Already exist: ${NORMAL}${_res}"
+			${ECHO} "${N1_COLOR}Already exist: ${N0_COLOR}${_res}"
 			return 1
 			;;
 		67)
 			;;
 		*)
-			${ECHO} "${MAGENTA}Error: ${NORMAL}${_res}"
+			${ECHO} "${N1_COLOR}Error: ${N0_COLOR}${_res}"
 			return 1
 			;;
 	esac
@@ -100,7 +100,7 @@ c_adduser()
 	if [ -z "${pw}" -a -z "${fromfile}" ]; then
 		[ -z "${epw}" ] && getpw
 	fi
-	[ -z "${pw}" -a -z "${epw}" ] && err 1 "${GREEN}pw= ${MAGENTA}or ${GREEN}epw= ${MAGENTA} is mandatory${NORMAL}"
+	[ -z "${pw}" -a -z "${epw}" ] && err 1 "${N2_COLOR}pw= ${N1_COLOR}or ${N2_COLOR}epw= ${N1_COLOR} is mandatory${N0_COLOR}"
 	ADDON=""
 	[ -n "$uid" ] && ADDON="${ADDON} -u ${uid}"
 	[ -n "$fullname" ] && ADDON="${ADDON} -c \"${fullname}\""
@@ -114,7 +114,7 @@ c_adduser()
 	fi
 
 	if [ "${emulator}" != "jail" -a -n "${emulator}" -a "${emulator}" != "bhyve" ]; then
-		. ${workdir}/emulator.subr
+		. ${distdir}/emulator.subr
 		init_usermode_emul
 		CHROOT_EXEC="/usr/sbin/chroot ${path} /bin/${emulator}"
 	else
@@ -126,26 +126,122 @@ c_adduser()
 	${CHROOT_EXEC} /bin/sh <<EOF
 /usr/sbin/pw useradd ${login} ${ADDON} -m
 EOF
+	_ret=$?
 
 	if [ -n "${pw}" ]; then
 		${CHROOT_EXEC} /bin/sh <<EOF
-echo "${pw}" |/usr/sbin/pw mod user ${login} -h 0 -
+echo "${pw}" | /usr/sbin/pw mod user ${login} -h 0 -
 EOF
 	elif [ -n "${epw}" ]; then
 		${CHROOT_EXEC} /bin/sh <<EOF
 /usr/bin/chpass -p '${epw}' ${login}
 EOF
 	fi
+
+	return ${_ret}
 }
 
 # must be filled:
 # mandatory: login
 remove()
 {
-	${exec_cmd} user del ${login}
+	local _ret _res
+	_res=$( ${exec_cmd} user del ${login} )
+	_ret=$?
+	if [ ${_ret} -eq 0 ]; then
+		${ECHO} "${N2_COLOR}user delete successfull${N0_COLOR}"
+	else
+		echo "${_res}"
+	fi
+	return ${_ret}
 }
 
-origjname=
+# -n "name of the tools" - show <name> in Info string, e.g: -n jexec, -n "pkg install" ...
+# -o uniq_name_of_the_task (one world)
+adduser_multi_init()
+{
+	local _jname
+
+	while getopts "c:n:o:" opt; do
+		case "${opt}" in
+			c) cmd="${OPTARG}" ;;
+			n) _multiple_consumer_name="${OPTARG}" ;;
+			o) task_owner="${OPTARG}" ;;
+		esac
+		shift $(($OPTIND - 1))
+	done
+
+	[ -z "${task_owner}" ] && err 1 "${N1_COLOR}multiple_processing_spawn: empty -o multiple_task_owner${N0_COLOR}"
+
+	. ${distdir}/multiple.subr
+	${ECHO} "${N1_COLOR}Hint: Press ${N2_COLOR}'Ctrl+t'${N1_COLOR} to see last logfile line for active task${N0_COLOR}" 1>&2
+	task_id=
+	task_id_cur=
+	task_owner="${task_owner}"
+	# spawn command for all jail
+	for _jname in ${jail_list}; do
+		task_id_cur=$( task mode=new logfile=/tmp/${task_owner}.${_jname}.log.$$ client_id=${_jname} autoflush=0 owner=${task_owner} /usr/bin/env NOCOLOR=1 /usr/local/bin/cbsd adduser jname=${_jname} ${cmd} 2>/dev/null )
+		sleep 0.1               # dont brute taskdb
+		if ! is_number "${task_id_cur}"; then
+			task_id="${task_id} ${task_id_cur}"
+		fi
+	done
+
+	multiple_task_id_all=$( echo ${task_id} | /usr/bin/tr " " "," )
+	sleep 0.5
+	multiple_processing_spawn -o ${task_owner} -n "${_multiple_consumer_name}"
+}
+
+# MAIN
+emulator="jail" # for jname_is_multiple
+jail_list=
+jname_is_multiple
+
+# MAIN for multiple jails
+if [ -n "${jail_list}" ]; then
+	# multiple
+	if [ -n "${jail_list}" ]; then
+		JLIST="${jail_list}"
+	fi
+
+	task_owner="adduser_multiple_query"
+	_args=
+
+	# trim for jname= in "$*"
+	for i in $*; do
+		prefix=
+		prefix=$( substr --pos=0 --len=6 --str="${i}" )
+		[ "${prefix}" = "jname=" ] && continue
+		if [ -n "${_args}" ]; then
+			_args="${_args} ${i}"
+		else
+			_args="${i}"
+		fi
+	done
+
+	case "${mode}" in
+		add)
+			[ -z "${pw}" -a -z "${epw}" ] && err 1 "${N2_COLOR}pw= ${N1_COLOR}or ${N2_COLOR}epw=${N1_COLOR} is mandatory for multiple operation${N0_COLOR}"
+			task_owner="adduser_multiple_add"
+			adduser_multi_init -c "${_args}" -o ${task_owner} -n "adduser add"
+			;;
+		remove)
+			[ -z "${login}" ] && err 1 "${N2_COLOR}login= ${N1_COLOR} is mandatory${N0_COLOR}"
+			task_owner="adduser_multiple_remove"
+			adduser_multi_init -c "${_args}" -o ${task_owner} -n "adduser remove"
+			;;
+		show)
+			[ -z "${login}" ] && err 1 "${N2_COLOR}login= ${N1_COLOR} is mandatory${N0_COLOR}"
+			task_owner="adduser_multiple_show"
+			adduser_multi_init -c "${_args}" -o ${task_owner} -n "adduser show"
+			;;
+	esac
+
+	err 0 "${N1_COLOR}Multiple adduser: ${N2_COLOR}done${N0_COLOR}"
+fi
+
+[ -n "${jname}" ] && shift # skip for jname
+
 
 if [ -z "${jname}" ]; then
 	data=""
@@ -155,7 +251,7 @@ else
 	origjname="${jname}"
 	. ${jrcconf}
 
-	[ $? -eq 1 ] &&  err 1 "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
+	[ $? -eq 1 ] &&  err 1 "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
 
 	[ $baserw -eq 1 ] && path=$data
 
@@ -163,7 +259,7 @@ else
 		set -e
 		. ${_MYDIR}/bsdconf.subr
 		set +e
-		. ${workdir}/universe.subr
+		. ${distdir}/universe.subr
 		readconf buildworld.conf
 		init_target_arch
 		init_srcdir
@@ -173,7 +269,7 @@ else
 	fi
 
 	if [ "${emulator}" != "jail" -a -n "${emulator}" -a "${emulator}" != "bhyve" ]; then
-		. ${workdir}/emulator.subr
+		. ${distdir}/emulator.subr
 		init_usermode_emul
 		CHROOT_EXEC="/usr/sbin/chroot ${path} /bin/${emulator}"
 	else
@@ -209,6 +305,8 @@ if [ -r "${fromfile}" ]; then
 		f_getvar user_pw_${i} pw
 		f_getvar user_pw_${i}_crypt epw
 		f_getvar user_gecos_${i} fullname
+		f_getvar user_uid_${i} uid
+		f_getvar user_gid_${i} gid
 		f_getvar user_home_${i} home
 		f_getvar user_shell_${i} shell
 		f_getvar user_member_groups_${i} secgroup
@@ -233,29 +331,28 @@ if [ -r "${fromfile}" ]; then
 fi
 
 case "${mode}" in
-	"remove")
+	remove)
 		res=$( ${exec_cmd} user show ${login} 2>&1)
 		err=$?
 		case ${err} in
 			0)
 				;;
 			*)
-				err 1 "${MAGENTA}Error: ${NORMAL}${T}"
+				err 1 "${N1_COLOR}Error: ${N0_COLOR}${res}"
 				;;
 		esac
 		res=$( remove )
 		err=$?
 		;;
-	"add")
-		res=$( adduser )
+	add)
+		res=$( c_adduser )
 		err=$?
 		;;
-	"show")
-		[ -z "${login}" ] && err 1 "${GREEN}login= ${MAGENTA}is mandatory${NORMAL}"
+	show)
+		[ -z "${login}" ] && err 1 "${N2_COLOR}login= ${N1_COLOR}is mandatory${N0_COLOR}"
 		res=$( ${exec_cmd} user show ${login} )
 		err=$?
 		;;
 esac
 
-[ ${err} -ne 0 ] && err 1 "${res}"
-exit 0
+err ${err} "${res}"

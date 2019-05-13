@@ -10,10 +10,9 @@ distcc=1 - enable distcc\n\
 ccache=1 - enable ccache\n"
 
 . ${subr}
+. ${cbsdinit}
+
 . ${system}
-. ${strings}
-. ${tools}
-init $*
 
 # MAIN
 [ -z "${cbsd_queue_name}" ] && cbsd_queue_name="/clonos/bases/"
@@ -25,7 +24,7 @@ oarch="${arch}"
 . ${distccacheconf}
 . ${mailconf}
 readconf buildworld.conf
-. ${workdir}/universe.subr
+. ${distdir}/universe.subr
 
 # for checkout_method
 readconf srcup.conf
@@ -41,11 +40,11 @@ init_basedir
 if [ "${ccache}" = "1"  ]; then
 	init_ccache_dir
 	if ! ccache_check; then
-		${ECHO} "${MAGENTA}*** ${GREEN}Ccache disabled: no binaries at /usr/local/bin/ccache${MAGENTA} ***${NORMAL}"
+		${ECHO} "${N1_COLOR}*** ${N2_COLOR}Ccache disabled: no binaries at /usr/local/bin/ccache${N1_COLOR} ***${N0_COLOR}"
 		ccache=0
 	fi
 
-	${ECHO} "${MAGENTA}*** ${GREEN}Ccache enabled${MAGENTA} ***${NORMAL}"
+	${ECHO} "${N1_COLOR}*** ${N2_COLOR}Ccache enabled${N1_COLOR} ***${N0_COLOR}"
 	export PATH=/usr/local/libexec/ccache:${PATH}
 	export CCACHE_PATH=/usr/bin:/usr/local/bin
 	export CCACHE_DIR=${ccache_dir_source}
@@ -68,7 +67,7 @@ makelock ${LOCKFILE} "rm -f ${__MAKE_CONF} ${BLDLOG}; cleanup_bases"
 
 [ ${distcc} -eq 1 ] && export DISTCC_HOSTS="${CBSD_DISTCCHOST}"
 
-register_base arch=${arch} ver=${ver}
+register_base arch=${arch} ver=${ver} source="buildworld"
 
 # CBSD QUEUE
 if [ -x "${moduledir}/cbsd_queue.d/cbsd_queue" ]; then
@@ -78,13 +77,13 @@ fi
 if [ -x "${BASE_DIR}/bin/sh" ]; then
 	baseelf=$( ${miscdir}/elf_tables --ver ${BASE_DIR}/bin/sh 2>/dev/null )
 	[ -z "${baseelf}" ] && baseelf="0"
-	register_base arch=${arch} ver=${ver}	# again: update elf
+	register_base arch=${arch} ver=${ver} source="installworld"	# again: update elf
 	base_status_is_maintenance_soft
 else
 	base_status_is_maintenance_hard
 fi
 
-${ECHO} "${MAGENTA}buildworld for TARGET:${GREEN}${arch} ${MAGENTA}TARGET_ARCH:${GREEN}${target_arch}${NORMAL}"
+${ECHO} "${N1_COLOR}buildworld for TARGET:${N2_COLOR}${arch} ${N1_COLOR}TARGET_ARCH:${N2_COLOR}${target_arch}${N0_COLOR}"
 
 st_date=$( /bin/date +%s )
 if [ ${notify} -eq 1 ]; then

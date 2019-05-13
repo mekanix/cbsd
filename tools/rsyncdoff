@@ -1,18 +1,14 @@
-#!/bin/sh
+#!/usr/local/bin/cbsd
 #v9.0.0
-globalconf="${workdir}/cbsd.conf";
 MYARG=""
 MYOPTARG=""
 MYDESC="Disable RSYNC service for jail migration"
 
-set -e
-. ${globalconf}
-set +e
-
 . ${subr}
+
+. ${cbsdinit}
+
 . ${initenv}
-. ${tools}
-init $*
 
 rsyncd_disable
 /usr/sbin/service rsyncd onestop

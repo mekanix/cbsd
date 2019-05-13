@@ -1,25 +1,21 @@
 #!/usr/local/bin/cbsd
 #v11.1.4
-globalconf="${workdir}/cbsd.conf";
-
-set -e
-. ${globalconf}
-set +e
 
 . ${subr}
 . ${strings}
 . ${tools}
 
-[ ! -f "${sharedir}/jail-arg" ] && err 1 "No such jail-arg skel"
-. ${sharedir}/jail-arg
+[ ! -f "${distsharedir}/jail-arg" ] && err 1 "No such jail-arg skel"
+. ${distsharedir}/jail-arg
 CBSDMODULE="bhyve"
-MYDESC="Ncurses based setup for jail-arg"
+MYDESC="Ncurses based setup for bhyve-arg"
 MYARG="jname"
 MYOPTARG="${JARG} outfile"
 
-init $*
-
+. ${cbsdinit}
 . ${settingstui}
+. ${distdir}/settings-tui-virtual.subr
+. ${distdir}/settings-tui-bhyve.subr
 . ${dialog}
 
 commit()
@@ -93,10 +89,10 @@ dialog_menu_main()
 	" # END-QUOTE
 
 	local i _mytest skip
-	local _checkbox="astart protected hidden bhyve_generate_acpi bhyve_wire_memory bhyve_rts_keeps_utc bhyve_force_msi_irq bhyve_x2apic_mode bhyve_mptable_gen bhyve_ignore_msr_acc xhci"
+	local _checkbox="astart protected hidden bhyve_generate_acpi bhyve_wire_memory bhyve_rts_keeps_utc bhyve_force_msi_irq bhyve_x2apic_mode bhyve_mptable_gen bhyve_ignore_msr_acc xhci jailed"
 
 	# don't show it in main menu:
-	local _in_sub_menu="bhyve_generate_acpi bhyve_wire_memory bhyve_rts_keeps_utc bhyve_force_msi_irq bhyve_x2apic_mode bhyve_mptable_gen bhyve_ignore_msr_acc cd_vnc_wait bhyve_vnc_resolution bhyve_vnc_tcp_bind vnc_password bhyve_vnc_vgaconf"
+	local _in_sub_menu="bhyve_generate_acpi bhyve_wire_memory bhyve_rts_keeps_utc bhyve_force_msi_irq bhyve_x2apic_mode bhyve_mptable_gen bhyve_ignore_msr_acc cd_vnc_wait bhyve_vnc_resolution bhyve_vnc_tcp_bind vnc_password bhyve_vnc_vgaconf on_crash on_poweroff on_reboot"
 
 	item_let="A"
 	item_num=0
@@ -162,8 +158,8 @@ dialog_menu_main()
 
 	menu_list="${menu_list} '-'	'-' ''"
 	menu_list="${menu_list} 'bhyve_controller'	'Constroller config >>'	'cbsd bhyve-controller-tui'"
-	menu_list="${menu_list} 'bhyvedsk'		'Storage config >>'	'cbsd bhyvedsk-tui'"
-	menu_list="${menu_list} 'bhyvenic'		'Network config >>'	'cbsd bhyvenic-tui.'"
+	menu_list="${menu_list} 'bhyvedsk'		'Storage config >>'	'cbsd bhyve-dsk-tui'"
+	menu_list="${menu_list} 'bhyvenic'		'Network config >>'	'cbsd bhyve-nic-tui.'"
 	menu_list="${menu_list} 'bhyve_options'		'Bhyve options >>'	'Customize bhyve options: acpi:${bhyve_generate_acpi}, wire:${bhyve_wire_memory} rts_utc:${bhyve_rts_keeps_utc} msi:${bhyve_force_msi_irq} x2apic:${bhyve_x2apic_mode} mptable:${bhyve_mptable_gen} ign_acc:${bhyve_ignore_msr_acc}'"
 
 	if [ "${vm_efi}" != "none" ]; then
@@ -173,7 +169,10 @@ dialog_menu_main()
 
 	menu_list="${menu_list} 'bhyve_flags'	'Additional bhyve_flags'	'Customize additional bhyve_flags. Current: ${bhyve_flags}'"
 
-	menu_list="${menu_list} 'order'		'Boot order >>'			'cbsd border-tui'"
+	menu_list="${menu_list} 'order'			'Boot order >>'			'cbsd border-tui'"
+	menu_list="${menu_list} 'cd_boot_firmware'	'Select CD boot firmware'	'change CD boot firmware.'"
+	menu_list="${menu_list} 'exit_behavior'		'Exit behavior settings'	'Exit behavior settings: poweroff:${on_poweroff},reboot:${on_reboot},crash:${on_crash}'"
+
 	menu_list="${menu_list} '-'	'-' ''"
 	menu_list="${menu_list} 'COMMIT'	'Save changes and quit'	'Save!'"
 
@@ -189,8 +188,8 @@ dialog_menu_main()
 
 ### MAIN
 . ${jrcconf}
-[ $? -eq 1 ] && err 1 "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
-[ "${emulator}" != "bhyve" ] && err 1 "${MAGENTA}Only for bhyve type VMs${NORMAL}"
+[ $? -eq 1 ] && err 1 "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
+[ "${emulator}" != "bhyve" ] && err 1 "${N1_COLOR}Only for bhyve type VMs${N0_COLOR}"
 
 shift #skip for jname
 
@@ -232,17 +231,17 @@ while [ 1 ]; do
 			get_construct_bhyve_vnc_options
 			;;
 		"bhyvenic")
-			bhyvenic-tui jname=${jname}
+			bhyve-nic-tui jname=${jname}
 			;;
 		"bhyvedsk")
-			bhyvedsk-tui jname=${jname}
+			bhyve-dsk-tui jname=${jname}
 			;;
 		"bhyve_controller")
 			bhyve-controller-tui jname=${jname}
 			;;
-		"order")
+		b_order|order)
 			border-tui jname="${jname}"
-			b_order=$( cbsdsql local "SELECT b_order FROM jails WHERE jname=\"${jname}\"" 2>/dev/null )
+			b_order=$( cbsdsqlro local "SELECT b_order FROM jails WHERE jname=\"${jname}\"" 2>/dev/null )
 			;;
 		"EXIT")
 			f_die
@@ -250,7 +249,7 @@ while [ 1 ]; do
 		"COMMIT")
 			commit
 			;;
-		astart|protected|hidden|bhyve_generate_acpi|bhyve_wire_memory|bhyve_rts_keeps_utc|bhyve_force_msi_irq|bhyve_x2apic_mode|bhyve_mptable_gen|bhyve_ignore_msr_acc|xhci)
+		astart|protected|hidden|bhyve_generate_acpi|bhyve_wire_memory|bhyve_rts_keeps_utc|bhyve_force_msi_irq|bhyve_x2apic_mode|bhyve_mptable_gen|bhyve_ignore_msr_acc|xhci|jailed)
 			invert_checkbox ${mychoice}
 			continue
 			;;

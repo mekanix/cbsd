@@ -7,12 +7,13 @@ EXTHELP="wf_xcreate.html"
 ADDHELP="mode=full for all atributes\n"
 
 . ${subr}
-. ${settingstui}
-. ${tools}
-. ${dialog}
-. ${workdir}/virtualbox.subr
 
-init $*
+. ${cbsdinit}
+
+. ${settingstui}
+. ${distdir}/settings-tui-virtual.subr
+. ${dialog}
+. ${distdir}/virtualbox.subr
 
 gen_newjail_conf()
 {
@@ -51,7 +52,7 @@ gen_newjail_conf()
 	gen_jconf
 	ERR=$?
 
-	[ $ERR -eq 0 ] || err 1 "${MAGENTA}Bad conf${NORMAL}"
+	[ $ERR -eq 0 ] || err 1 "${N1_COLOR}Bad conf${N0_COLOR}"
 	err 0 ${A}
 }
 
@@ -150,7 +151,7 @@ dialog_menu_main()
 
 
 #### [ MAIN AREA ] ####
-[ ! -f ${localcbsdconf} ] && err 1 "${MAGENTA}no such conf file${NORMAL}"
+[ ! -f ${localcbsdconf} ] && err 1 "${N1_COLOR}no such conf file${N0_COLOR}"
 . ${localcbsdconf}
 . ${inventory}
 

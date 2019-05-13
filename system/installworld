@@ -1,6 +1,5 @@
 #!/usr/local/bin/cbsd
 #v11.1.16
-globalconf="${workdir}/cbsd.conf";
 CBSDMODULE="build"
 MYARG=""
 MYOPTARG="ver arch target_arch basename stable destdir"
@@ -9,14 +8,11 @@ ADDHELP="ver=head for current.\n\
 stable=1 for RELENG_X\n\
 destdir= for alternative install path in root dir\n"
 
-set -e
-. ${globalconf}
-set +e
-
 . ${subr}
 readconf buildworld.conf
-. ${workdir}/universe.subr
-init $*
+. ${cbsdinit}
+
+. ${distdir}/universe.subr
 
 over="${ver}"
 oarch="${arch}"
@@ -46,38 +42,40 @@ echo $$ > ${BASE_DIR_LOCKFILE}
 # *** Error code 1
 [ "$arch" = "arm" ] && export COMPILER_TYPE="clang"
 
-register_base arch=${arch} ver=${ver}
+register_base arch=${arch} ver=${ver} source="installworld"
 
 if [ -x "${BASE_DIR}/bin/sh" ]; then
 	baseelf=$( ${miscdir}/elf_tables --ver ${BASE_DIR}/bin/sh 2>/dev/null )
 	[ -z "${baseelf}" ] && baseelf="0"
-	register_base arch=${arch} ver=${ver}	# again: update elf
+	register_base arch=${arch} ver=${ver} source="installworld"	# again: update elf
 	base_status_is_maintenance_soft
 else
 	base_status_is_maintenance_hard
 fi
 
-[ ! -r ${SRC_DIR} ] && err 1 "${MAGENTA}No such Makefile in: ${GREEN}${SRC_DIR}${NORMAL}"
+[ ! -r ${SRC_DIR} ] && err 1 "${N1_COLOR}No such Makefile in: ${N2_COLOR}${SRC_DIR}${N0_COLOR}"
 
-[ ! -r ${SRC_DIR}/etc/sendmail/freebsd.cf ] && make -C ${SRC_DIR}/etc/sendmail >/dev/null 2>&1 ||true
+[ ! -r ${SRC_DIR}/etc/sendmail/freebsd.cf ] && /usr/bin/make -C ${SRC_DIR}/etc/sendmail >/dev/null 2>&1 ||true
 
+set -o errexit
+cbsdlogger NOTICE ${CBSD_APP}: installdworld started: /usr/bin/make -C ${SRC_DIR} installworld DESTDIR=${BASE_DIR} TARGET=${arch} TARGET_ARCH=${target_arch}
 /usr/bin/make -C ${SRC_DIR} installworld DESTDIR=${BASE_DIR} TARGET=${arch} TARGET_ARCH=${target_arch}
-# broken on FreeBSD 12
-#/usr/bin/make -C ${SRC_DIR}/etc distribution DESTDIR=${BASE_DIR} TARGET=${arch} TARGET_ARCH=${target_arch}
+cbsdlogger NOTICE ${CBSD_APP}: installdworld ended: /usr/bin/make -C ${SRC_DIR} installworld DESTDIR=${BASE_DIR} TARGET=${arch} TARGET_ARCH=${target_arch}
+cbsdlogger NOTICE ${CBSD_APP}: distribution started: /usr/bin/make -C ${SRC_DIR} distribution DESTDIR=${BASE_DIR} TARGET=${arch} TARGET_ARCH=${target_arch}
 /usr/bin/make -C ${SRC_DIR} distribution DESTDIR=${BASE_DIR} TARGET=${arch} TARGET_ARCH=${target_arch}
+cbsdlogger NOTICE ${CBSD_APP}: distribution ended: /usr/bin/make -C ${SRC_DIR} distribution DESTDIR=${BASE_DIR} TARGET=${arch} TARGET_ARCH=${target_arch}
+set +o errexit
 
-cleanup_bases
-
-[ $? -ne 0 ] && err 1 "${MAGENTA}Installworld error${NORMAL}"
+[ $? -ne 0 ] && err 1 "${N1_COLOR}Installworld error${N0_COLOR}"
 preparebase dst=${BASE_DIR} emulator=${emulator}
 
-[ ! -f ${BASE_DIR}/bin/sh ] && err 1 "${MAGENTA}No such /bin/sh in ${BASE_DIR}. Try to rebuild world${NORMAL}"
+[ ! -f ${BASE_DIR}/bin/sh ] && err 1 "${N1_COLOR}No such /bin/sh in ${BASE_DIR}. Try to rebuild world${N0_COLOR}"
 
 #idx platform name arch ver stable elf date
 baseelf=
 baseelf=$( ${miscdir}/elf_tables --ver ${BASE_DIR}/bin/sh 2>/dev/null )
 
 [ -z "${baseelf}" ] && baseelf="0"
-register_base arch=${arch} ver=${ver}
+register_base arch=${arch} ver=${ver} source="installworld"
 
 /bin/rm -f ${BASE_DIR_LOCKFILE}

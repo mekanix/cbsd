@@ -6,7 +6,7 @@ MYOPTARG="alljails shownode display node header order"
 MYDESC="List bhyve domain and status"
 ADDHELP="alljails=1 - (0 or 1): force to display foreign/remote resources\n\
   when sqlreplica=1 and node available, alljails sets to 1 automatically\n\
-shownode=1 - show nodename for jails\n\
+shownode=1 - show nodename for domains\n\
 node= only for current node\n\
 header=0 don't print header\n\
 display= list by comma for column.\n\
@@ -19,28 +19,34 @@ EXTHELP="wf_bls.html"
 
 . ${subr}
 . ${strings}
+. ${tools}
 . ${nodes}
 
 readconf bls.conf
-init $*
+. ${cbsdinit}
 
-oalljails="${alljails}"		# store original settings, they have more weight vs auto
-oshownode="${shownode}"		# store original settings, they have more weight vs auto
+[ -n "${display}" ] && odisplay="${display}"	# store original display settings
+oalljails="${alljails}"				# store original settings, they have more weight vs auto
+oshownode="${shownode}"				# store original settings, they have more weight vs auto
 
 # autosettings for alljails and shownode
 is_cluster_mode
 cluster_mode=$?		# cluster_mode=0 when we have any node
 
 if [ ${cluster_mode} -eq 0 ]; then
-	alljails=1
-	shownode=1
+
+	if [ "${oshownode}" != "0" ]; then
+		alljails=1
+		shownode=1
+	fi
+
 fi
 
 # restore manual settings
 [ -n "${oalljails}" ] && alljails="${oalljails}"
 [ -n "${oshownode}" ] && alljails="${oshownode}"
 
-if [ -z "${display}" ]; then
+if [ -z "${display}" -a -z "${odisplay}" ]; then
 	case "${racct}" in
 		1)
 			display="jname,jid,vm_ram,vm_curmem,vm_cpus,pcpu,vm_os_type,ip4_addr,status,vnc_port"
@@ -51,7 +57,7 @@ if [ -z "${display}" ]; then
 	esac
 fi
 
-[ "${shownode}" = "1" ] && display="nodename,${display}"
+[ "${shownode}" = "1" -a -z "${odisplay}" ] && display="nodename,${display}"
 [ -z "${order}" ] && order="asc"
 
 #remove commas for loop action on header
@@ -77,7 +83,7 @@ conv_status()
 			status="Slave"
 			;;
 		3)
-			_maintain_reason=$( cbsdsql local SELECT maintenance FROM jails WHERE jname=\"${jname}\" 2>/dev/null )
+			_maintain_reason=$( cbsdsqlro local SELECT maintenance FROM jails WHERE jname=\"${jname}\" 2>/dev/null )
 			if [ -n "${_maintain_reason}" -a "${_maintain_reason}" != "0" ]; then
 				status="Maintenance:${_maintain_reason}"
 			else
@@ -93,7 +99,7 @@ conv_status()
 
 show_header()
 {
-	local _header="${WHITE}${BOLD}${myheader}${NORMAL}"
+	local _header="${H1_COLOR}${BOLD}${myheader}${N0_COLOR}"
 	[ ${header} -eq 1 ] && ${ECHO} ${_header}
 }
 
@@ -113,8 +119,9 @@ populate_output_data()
 	local unregister="0"
 	local _tmpport _tmpbind
 	local _pid=0 _node_is_online=0 _md5_node_name
+	local _jailed _jip _ret
 
-	printf "${NORMAL}" # for column sort
+	printf "${N0_COLOR}" # for column sort
 
 	while getopts "j:s:u:" opt; do
 		case "${opt}" in
@@ -132,12 +139,12 @@ populate_output_data()
 	if [ "${sqlfile}" = "local" ]; then
 		if [ -e "/dev/vmm/${jname}" ]; then
 			# bhyve is active
-			printf "${GREEN}"
+			printf "${N2_COLOR}"
 
 			if [ "${racct}" = "1" ]; then
 				memoryuse=0
 				pcpu=0
-				_pid=$( cbsdsql ${sqlfile} SELECT jid FROM jails WHERE jname=\"${jname}\" )
+				_pid=$( cbsdsqlro ${sqlfile} SELECT jid FROM jails WHERE jname=\"${jname}\" )
 				if [ "${_pid}" = "0" -o "${_pid}" = "1" ]; then
 					_val="0"
 				else
@@ -145,7 +152,7 @@ populate_output_data()
 				fi
 			fi
 		else
-			printf "${CYAN}"
+			printf "${N4_COLOR}"
 		fi
 	else
 		# pop status variable from node_is_online()
@@ -153,13 +160,13 @@ populate_output_data()
 		eval _node_is_online=\$node_${_md5_node_name}_online
 		if [ "${_node_is_online}" = "1" ]; then
 			# retr from sql
-			jid=$( cbsdsql ${sqlfile} SELECT jid FROM jails WHERE jname=\"${jname}\" )
+			jid=$( cbsdsqlro ${sqlfile} SELECT jid FROM jails WHERE jname=\"${jname}\" )
 			case ${jid} in
 				0)
-					printf "${CYAN}"
+					printf "${N4_COLOR}"
 					;;
 				*)
-					printf "${GREEN}"
+					printf "${N2_COLOR}"
 					;;
 			esac
 		else
@@ -205,23 +212,47 @@ populate_output_data()
 			vnc_port)
 				if [ -r "${sqlfile_sysdir}/${jname}/vnc_port" ]; then
 					_tmpport=$( /bin/cat ${sqlfile_sysdir}/${jname}/vnc_port )
-					if [ -r ${sqlfile_sysdir}/${jname}/local.sqlite ]; then
-						_tmpbind=$( cbsdsql ${sqlfile_sysdir}/${jname}/local.sqlite "SELECT bhyve_vnc_tcp_bind FROM settings ORDER BY (created) DESC LIMIT 1" 2>/dev/null )
-						# we need for special route of tcpbind presentation for foreign bhyve. replace 0.0.0.0 by nodeip
-						if [ "${sqlfile}" != "local" ]; then
-							_tmpbind=$( cbsdsql ${sqlfile} "SELECT nodeip FROM local LIMIT 1" 2>/dev/null )
-						fi
-						_val="${_tmpbind}:${_tmpport}"
+
+					# jailed?
+					_jailed=$( cbsdsqlro ${sqlfile_sysdir}/${jname}/local.sqlite "SELECT jailed FROM settings LIMIT 1" )
+					[ -z "${_jailed}" ] && _jailed="0"
+					if [ "${_jailed}" != "0" ]; then
+						# this is jailed bhyve, try to obtain jail IPs
+						_jip=$( jget mode=quiet jname=${_jailed} ip4_addr )
+						iptype ${_jip} >/dev/null 2>&1
+						_ret=$?
+
+						case ${_ret} in
+						1)
+							# jail have valid IPv4
+							_tmpbind="${_jip}"
+							;;
+						*)
+							# ipv6 or invalid IP
+							_tmpbind="Unk"
+							;;
+						esac
 					else
-						_val="Unk"
+						# not jailed
+						if [ -r ${sqlfile_sysdir}/${jname}/local.sqlite ]; then
+							# we need for special route of tcpbind presentation for foreign bhyve. replace 0.0.0.0 by nodeip
+							if [ "${sqlfile}" != "local" ]; then
+								_tmpbind=$( cbsdsqlro ${sqlfile} "SELECT nodeip FROM local LIMIT 1" 2>/dev/null )
+							else
+								_tmpbind=$( cbsdsqlro ${sqlfile_sysdir}/${jname}/local.sqlite "SELECT bhyve_vnc_tcp_bind FROM settings ORDER BY (created) DESC LIMIT 1" 2>/dev/null )
+							fi
+						else
+							_tmpbind="Unk"
+						fi
 					fi
+					_val="${_tmpbind}:${_tmpport}"
 				else
 					_val="0"
 				fi
 				;;
 			ip4_addr)
 				if [ -r ${sqlfile_sysdir}/${jname}/local.sqlite ]; then
-					_val=$( cbsdsql ${sqlfile_sysdir}/${jname}/local.sqlite "SELECT ip4_addr FROM settings ORDER BY (created) DESC LIMIT 1" 2>/dev/null )
+					_val=$( cbsdsqlro ${sqlfile_sysdir}/${jname}/local.sqlite "SELECT ip4_addr FROM settings ORDER BY (created) DESC LIMIT 1" 2>/dev/null )
 				else
 					_val="Unk"
 				fi
@@ -237,7 +268,7 @@ populate_output_data()
 		printf "${_val} "
 	done
 
-	printf "${NORMAL}\n"
+	printf "${N0_COLOR}\n"
 }
 
 
@@ -259,7 +290,7 @@ show_jaildata_from_sql()
 		sqlfile_sysdir="${tmpdir}/${1}"
 	fi
 
-	cbsdsql ${sqlfile} SELECT jname FROM jails WHERE emulator=\"bhyve\" ORDER BY jname ASC | while read jname; do
+	cbsdsqlro ${sqlfile} SELECT jname FROM jails WHERE emulator=\"bhyve\" ORDER BY jname ASC | while read jname; do
 		_status=""
 
 		if [ "${sqlfile}" = "local" ]; then
@@ -314,7 +345,7 @@ show_remote()
 {
 	show_header
 
-	[ -z "${node}" ] && node=$( cbsdsql nodes SELECT nodename FROM nodelist 2>/dev/null | /usr/bin/xargs )
+	[ -z "${node}" ] && node=$( cbsdsqlro nodes SELECT nodename FROM nodelist 2>/dev/null | /usr/bin/xargs )
 
 	for _n in ${node}; do
 		nodename="${_n}"
@@ -340,7 +371,7 @@ show_jails()
 	fi
 }
 
-. ${workdir}/jrctl.subr
+. ${distdir}/jrctl.subr
 
 #### MAIN
 [ -z "${header}" ] && header=1

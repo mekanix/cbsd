@@ -13,8 +13,8 @@ bcreate \
 bexport \
 bhyve-p9shares \
 bhyve-ppt \
-bhyvedsk \
-bhyvedsk-tui \
+bhyve-dsk \
+bhyve-dsk-list \
 bimport \
 blogin \
 bls \

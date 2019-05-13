@@ -1,6 +1,5 @@
 #!/usr/local/bin/cbsd
-#v11.0.0
-globalconf="${workdir}/cbsd.conf"
+#v12.0.4
 CBSDMODULE="bsdconf"
 MYARG=""
 MYOPTARG="jname fromfile"
@@ -10,14 +9,81 @@ fromfile - include file for read sysrc_enable, sysrc_disable list\n"
 EXTHELP="modules/bsdconf.d.html"
 
 . ${subr}
-. ${strings}
+. ${cbsdinit}
+
 . ${system}
-init $*
 
 #defines
 _MYDIR=$( /usr/bin/dirname `/bin/realpath $0` )
 
+emulator="jail" # for jname_is_multiple
+jail_list=
+jname_is_multiple
+
+# -n "name of the tools" - show <name> in Info string, e.g: -n jexec, -n "pkg install" ...
+# -o uniq_name_of_the_task (one world)
+sysrc_multi_init()
+{
+	local _jname
+
+	while getopts "c:n:o:" opt; do
+		case "${opt}" in
+			c) cmd="${OPTARG}" ;;
+			n) _multiple_consumer_name="${OPTARG}" ;;
+			o) task_owner="${OPTARG}" ;;
+		esac
+		shift $(($OPTIND - 1))
+	done
+
+	[ -z "${task_owner}" ] && err 1 "${N1_COLOR}multiple_processing_spawn: empty -o multiple_task_owner${N0_COLOR}"
+
+	. ${distdir}/multiple.subr
+	${ECHO} "${N1_COLOR}Hint: Press ${N2_COLOR}'Ctrl+t'${N1_COLOR} to see last logfile line for active task${N0_COLOR}" 1>&2
+	task_id=
+	task_id_cur=
+	task_owner="${task_owner}"
+	# spawn command for all jail
+	for _jname in ${jail_list}; do
+		task_id_cur=$( task mode=new logfile=/tmp/${task_owner}.${_jname}.log.$$ client_id=${_jname} autoflush=0 owner=${task_owner} /usr/bin/env NOCOLOR=1 /usr/local/bin/cbsd sysrc jname=${_jname} ${cmd} 2>/dev/null )
+		sleep 0.1               # dont brute taskdb
+		if ! is_number "${task_id_cur}"; then
+			task_id="${task_id} ${task_id_cur}"
+		fi
+	done
+
+	multiple_task_id_all=$( echo ${task_id} | /usr/bin/tr " " "," )
+	sleep 0.5
+	multiple_processing_spawn -o ${task_owner} -n "${_multiple_consumer_name}"
+}
+
+# MAIN for multiple jails
+if [ -n "${jail_list}" ]; then
+	# multiple
+	if [ -n "${jail_list}" ]; then
+		JLIST="${jail_list}"
+	fi
+
+	task_owner="sysrc_multiple_query"
+	_args=
+
+	# trim for jname= in "$*"
+	for i in $*; do
+		prefix=
+		prefix=$( substr --pos=0 --len=6 --str="${i}" )
+		[ "${prefix}" = "jname=" ] && continue
+		if [ -n "${_args}" ]; then
+			_args="${_args} ${i}"
+		else
+			_args="${i}"
+		fi
+	done
+	sysrc_multi_init -c "${_args}" -o ${task_owner} -n "sysrc query"
+
+	err 0 "${N1_COLOR}Multiple sysrc: ${N2_COLOR}done${N0_COLOR}"
+fi
+
 [ -n "${jname}" ] && shift # skip for jname
+
 
 if [ -n "${fromfile}" ]; then
 	shift
@@ -25,12 +91,12 @@ if [ -n "${fromfile}" ]; then
 fi
 
 cmd="${@}"
-[ -z "${cmd}" -a -z "${fromfile}" ] && err 1 "${MAGENTA}Empty command${NORMAL}"
+[ -z "${cmd}" -a -z "${fromfile}" ] && err 1 "${N1_COLOR}Empty command${N0_COLOR}"
 
 ## MAIN ##
 if [ -n "${jname}" ]; then
 	. ${jrcconf}
-	[ $? -eq 1 ] && err 1 "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
+	[ $? -eq 1 ] && err 1 "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
 
 	[ $baserw -eq 1 ] && path=$data
 
@@ -38,7 +104,7 @@ if [ -n "${jname}" ]; then
 		set -e
 			. ${_MYDIR}/bsdconf.subr
 		set +e
-		. ${workdir}/universe.subr
+		. ${distdir}/universe.subr
 		readconf buildworld.conf
 		init_target_arch
 		init_srcdir

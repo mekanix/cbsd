@@ -7,11 +7,10 @@ ADDHELP="This script used mostly ClonOS to obtain new jail from template\n"
 EXTHELP="wf_forms.html"
 
 . ${subr}
-. ${tools}
-. ${strings}
-. ${system}
 
-init $*
+. ${cbsdinit}
+
+. ${system}
 
 if [ -n "${formfile}" ]; then
 	original_forms="${formfile}"
@@ -22,7 +21,7 @@ else
 	set +o errexit
 fi
 
-[ ! -r ${original_forms} ] && err 1 "${MAGENTA}No such file: ${GREEN}${original_forms}${NORMAL}"
+[ ! -r ${original_forms} ] && err 1 "${N1_COLOR}No such file: ${N2_COLOR}${original_forms}${N0_COLOR}"
 temp_form=$( /usr/bin/mktemp -q /tmp/cbsd_form.XXXXXX )
 
 /bin/cp -a ${original_forms} ${temp_form}

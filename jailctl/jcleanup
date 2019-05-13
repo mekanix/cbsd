@@ -1,6 +1,6 @@
 #!/usr/local/bin/cbsd
 #v11.1.6
-globalconf="${workdir}/cbsd.conf";
+globalconf="${distdir}/cbsd.conf";
 CBSDMODULE="jail"
 MYARG="jname"
 MYOPTARG="sharedfs"
@@ -14,7 +14,7 @@ MYDESC="Force unmount and cleanup for offline jail"
 
 sharedfs=0
 
-init $*
+. ${cbsdinit}
 
 . ${jrcconf}
 [ $? -eq 1 ] && return 0 #only for registered jails
@@ -62,7 +62,7 @@ if [ "${vnet}" = "1" ]; then
 		[ -z "${myepair}" ] && continue
 		/sbin/ifconfig ${myepair} >/dev/null 2>&1
 		if [ $? -eq 0 ]; then
-			${ECHO} "${MAGENTA}jcleanup: destroy epair for ${jname}: ${GREEN}${myepair}${NORMAL}"
+			${ECHO} "${N1_COLOR}jcleanup: destroy epair for ${jname}: ${N2_COLOR}${myepair}${N0_COLOR}"
 			/sbin/ifconfig ${myepair} destroy
 		fi
 	done

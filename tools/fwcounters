@@ -7,15 +7,14 @@ ADDHELP="jname = alljails for cyclic collect via all online jails\n\
 mode = nozero - skip for ipfw zero for counters\n\
 mode = remove - remove counters after collect info\n"
 
-
 . ${subr}
 
-init $*
+. ${cbsdinit}
 
 getalljails()
 {
 	# select only active jail and not VMs
-	cbsdsql local "SELECT jname FROM jails WHERE emulator != 'bhyve' AND status=1" |while read jname; do
+	cbsdsqlro local "SELECT jname FROM jails WHERE emulator != 'bhyve' AND status=1" |while read jname; do
 		fwinit
 		insert
 	done
@@ -37,7 +36,7 @@ fwinit()
 
 checkjail()
 {
-	A=$( cbsdsql local select status from jails where jname=\"$jname\" )
+	A=$( cbsdsqlro local select status from jails where jname=\"$jname\" )
 	[ "${A}" = "1" ] && return 1
 	return 0
 }
@@ -67,7 +66,8 @@ insert()
 	fi
 
 	if [ "${mode}" = "remove" ]; then
-		/sbin/ipfw -q delete ${FWIN} ${FWOUT}
+		/sbin/ipfw -q delete `/sbin/ipfw show | /usr/bin/grep "jail ${jid} " | /usr/bin/cut -f 1 -d ' '`
+		#/sbin/ipfw -q delete ${FWIN} ${FWOUT}
 		rm -f "${ftmpdir}/${jname}-fwout" "${ftmpdir}/${jname}-fwin"
 	fi
 }

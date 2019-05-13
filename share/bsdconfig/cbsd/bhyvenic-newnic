@@ -56,7 +56,7 @@ MYOPTARG=""
 MYDESC="Add and attach new vitual NIC to VM"
 CBSDMODULE="bhyve"
 
-globalconf="${workdir}/cbsd.conf";
+globalconf="${distdir}/cbsd.conf";
 
 set -e
 . ${globalconf}
@@ -66,19 +66,19 @@ set +e
 . ${strings}
 . ${tools}
 . ${vimagetui}
-init $*
+. ${cbsdinit}
 
-. ${workdir}/bsdconfig.subr
+. ${distdir}/bsdconfig.subr
 #f_include_lang $BSDCFG_LIBE/$APP_DIR/include/messages-bhyvenic.subr
 . $BSDCFG_LIBE/$APP_DIR/include/messages-bhyvenic.subr
 
 . ${jrcconf}
-[ $? -eq 1 ] && err 1 "${MAGENTA}No such VM: ${GREEN}${jname}${NORMAL}"
-[ "${emulator}" != "bhyve" ] && err 1 "${MAGENTA}Not in bhyve mode${NORMAL}"
+[ $? -eq 1 ] && err 1 "${N1_COLOR}No such VM: ${N2_COLOR}${jname}${N0_COLOR}"
+[ "${emulator}" != "bhyve" ] && err 1 "${N1_COLOR}Not in bhyve mode${N0_COLOR}"
 
 . $BSDCFG_LIBE/$APP_DIR/include/bhyvenic.subr
 
-. ${workdir}/bhyve.subr
+. ${distdir}/bhyve.subr
 . ${vimageconf}
 
 #load_nic_info

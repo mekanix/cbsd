@@ -5,13 +5,12 @@
 unset workdir
 
 # MAIN
-. /etc/rc.conf
-
+[ -z "${cbsd_workdir}" ] && . /etc/rc.conf
 [ -z "${cbsd_workdir}" ] && exit
 
 workdir="${cbsd_workdir}"
 
-[ ! -f "${workdir}/cbsd.conf" ] && exit
+[ ! -f "${distdir}/cbsd.conf" ] && exit
 
 . ${distdir}/cbsd.conf
 . ${distdir}/tools.subr
@@ -44,7 +43,7 @@ for i in ${vms}; do
 	vnc_password=
 	vm_efi=
 
-	${ECHO} "  * ${MAGENTA}Update bhyve settings tables for ${GREEN}${i}${NORMAL}"
+	${ECHO} "  * ${N1_COLOR}Update bhyve settings tables for ${N2_COLOR}${i}${N0_COLOR}"
 	${miscdir}/sqlcli ${mydb} DROP TABLE IF EXISTS settings
 	/usr/local/bin/cbsd ${miscdir}/updatesql ${mydb} ${distdir}/share/local-bhyve-settings.schema settings
 

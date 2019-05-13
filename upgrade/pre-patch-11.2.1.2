@@ -5,13 +5,12 @@
 unset workdir
 
 # MAIN
-. /etc/rc.conf
-
+[ -z "${cbsd_workdir}" ] && . /etc/rc.conf
 [ -z "${cbsd_workdir}" ] && exit
 
 workdir="${cbsd_workdir}"
 
-[ ! -f "${workdir}/cbsd.conf" ] && exit
+[ ! -f "${distdir}/cbsd.conf" ] && exit
 
 . ${distdir}/cbsd.conf
 . ${distdir}/tools.subr
@@ -28,6 +27,6 @@ for i in ${vms}; do
 	unset _test
 	_test=$( ${miscdir}/sqlcli ${mydb} "SELECT controller_id FROM bhyvedsk LIMIT 1" )
 	[ -n "${_test}" ] && continue
-	${ECHO} "  * ${MAGENTA}Update bhyvedsk tables: controller_id for ${GREEN}${i}${NORMAL}"
+	${ECHO} "  * ${N1_COLOR}Update bhyvedsk tables: controller_id for ${N2_COLOR}${i}${N0_COLOR}"
 	${miscdir}/sqlcli ${mydb} ALTER TABLE bhyvedsk ADD COLUMN controller_id integer default 0
 done

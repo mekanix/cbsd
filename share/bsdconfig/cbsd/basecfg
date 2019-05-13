@@ -22,7 +22,7 @@ dialog_menu_main()
 
 	local f_dialog_title=" Configure VM Machine "
 
-	jlist=$( cbsdsql local SELECT jname FROM jails WHERE emulator = \"bhyve\" |xargs )
+	jlist=$( cbsdsqlro local SELECT jname FROM jails WHERE emulator = \"bhyve\" |xargs )
 
 	eval $( for jname in ${jlist}; do
 		. ${jrcconf}
@@ -82,9 +82,9 @@ dialog_menu_main()
 ############################################################ MAIN
 export NOCOLOR=1
 
-init $*
+. ${cbsdinit}
 f_include_lang $BSDCFG_LIBE/$APP_DIR/include/messages.subr
-. ${workdir}/bsdconfig.subr
+. ${distdir}/bsdconfig.subr
 
 
 # Incorporate rc-file if it exists

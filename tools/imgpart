@@ -16,7 +16,7 @@ ebytes - expected bytes (for pass into cbsdtee) in extract mode\n"
 filestats=
 ebytes=
 
-init $*
+. ${cbsdinit}
 
 extractchunk()
 {
@@ -36,7 +36,7 @@ extractchunk()
 		0)
 			[ -z "${out}" ] && out="/dev/stdout"
 			imghelper --start ${FROM} --end ${TO} --infile ${SRC} --outfile ${out}
-			[ $? -ne 0 ] && err 1 "${MAGENTA}imghelper error${NORMAL}"
+			[ $? -ne 0 ] && err 1 "${N1_COLOR}imghelper error${N0_COLOR}"
 			echo >> ${out}
 			;;
 		1)
@@ -46,7 +46,7 @@ extractchunk()
 			else
 				imghelper --start ${FROM} --end ${TO} --infile ${SRC} | ${miscdir}/cbsdtee -e ${ebytes} | /usr/bin/tar xpf - -C "${out}" --numeric-owner
 			fi
-			[ $? -ne 0 ] && err 1 "${MAGENTA}imghelper error${NORMAL}"
+			[ $? -ne 0 ] && err 1 "${N1_COLOR}imghelper error${N0_COLOR}"
 			;;
 	esac
 
@@ -63,7 +63,7 @@ extractme()
 		SRC="${jname}"
 	else
 		SRC="${importdir}/${jname}.img"
-		[ ! -f ${SRC} ] && err 1 "${MAGENTA}No such image: ${GREEN}${SRC}${NORMAL}"
+		[ ! -f ${SRC} ] && err 1 "${N1_COLOR}No such image: ${N2_COLOR}${SRC}${N0_COLOR}"
 	fi
 
 	[ -n "${hdrver}" ] && _imgpart=$1
@@ -114,7 +114,7 @@ extractme()
 			;;
 	esac
 
-	extractchunk || err 1 "${MAGENTA}Error: image has no FROM/TO symbols for ${part}. Probably wrong format version: ${GREEN}${jname}${NORMAL}"
+	extractchunk || err 1 "${N1_COLOR}Error: image has no FROM/TO symbols for ${part}. Probably wrong format version: ${N2_COLOR}${jname}${N0_COLOR}"
 }
 
 packme()
@@ -127,14 +127,14 @@ packme()
 	case ${part} in
 		header)
 			# use jailrcconfdir for back compatible with CBSD < 10.1.0
-			[ ! -f "${jailrcconfdir}/rc.conf_${jname}" -a ! -f "${jailsysdir}/${jname}/rc.conf_${jname}" ] && err 1 "${MAGENTA}No such rcconf for: ${GREEN}$jname${NORMAL}"
+			[ ! -f "${jailrcconfdir}/rc.conf_${jname}" -a ! -f "${jailsysdir}/${jname}/rc.conf_${jname}" ] && err 1 "${N1_COLOR}No such rcconf for: ${N2_COLOR}$jname${N0_COLOR}"
 			[ -f "${jailrcconfdir}/rc.conf_${jname}" ] && . ${jailrcconfdir}/rc.conf_${jname}
 			[ -f "$jailsysdir/$jname/rc.conf_${jname}" ] && . ${jailsysdir}/${jname}/rc.conf_${jname}
 			echo "add header"
 			DT=$( /bin/date "+%Y%m%d" )
 
 			if [ -r ~cbsd/nodename ]; then
-				_my_nodename=$( /bin/cat ~cbsd/nodename )
+				_my_nodename=$( /bin/cat ~cbsd/nodename | /usr/bin/awk '{printf $1}' )
 			else
 				_my_nodename=$( /bin/hostname )
 			fi
@@ -164,9 +164,15 @@ EOF
 					# additional loop to check for symlink and zvol
 					if [ ${zfsfeat} -eq 1 ]; then
 						. ${zfstool}
+						_zvol_name_list=
 						for i in $( /usr/bin/find ${data}/ -type l -depth 1 -maxdepth 1 ); do
 							if is_getzvol ${i}; then
 								_zvol_name=$( /usr/bin/basename ${i} | /usr/bin/sed 's:\.vhd::g' )
+								if [ -n "${_zvol_name_list}" ]; then
+									_zvol_name_list="${_zvol_name_list} ${_zvol_name}"
+								else
+									_zvol_name_list="${_zvol_name}"
+								fi
 								imgbytes=$( /sbin/zfs get -Hp -o value volsize ${is_zvol} )
 								echo "vm_zvol_size_${_zvol_name}=\"${imgbytes}\"" >> ${out}
 								_zvol_list=$(( _zvol_list + 1 ))
@@ -177,9 +183,9 @@ EOF
 				*)
 			esac
 
-			_dsk_list=$( cbsdsql ${jailsysdir}/${jname}/local.sqlite SELECT dsk_path FROM bhyvedsk WHERE jname=\"${jname}\" |/usr/bin/sed 's:\.vhd::g' )
+			_dsk_list=$( cbsdsqlro ${jailsysdir}/${jname}/local.sqlite SELECT dsk_path FROM bhyvedsk WHERE jname=\"${jname}\" | /usr/bin/sed 's:\.vhd::g' | /usr/bin/xargs )
 			echo "vm_dsk_list=\"${_dsk_list}\"" >> ${out}
-			echo "vm_zvol_list=\"${_zvol_name}\"" >> ${out}
+			echo "vm_zvol_list=\"${_zvol_name_list}\"" >> ${out}
 			echo "___NCSTOP_HEADER=1" >> ${out}
 			;;
 		rcconf)
@@ -247,9 +253,9 @@ EOF
 		data)
 			echo "add data"
 			# use jailrcconfdir for back compatible with CBSD < 10.1.0
-			[ ! -f "${jailrcconfdir}/rc.conf_${jname}" -a ! -f "${jailsysdir}/${jname}/rc.conf_${jname}" ] && err 1 "${MAGENTA}No such rcconf for: ${GREEN}$jname${NORMAL}"
+			[ ! -f "${jailrcconfdir}/rc.conf_${jname}" -a ! -f "${jailsysdir}/${jname}/rc.conf_${jname}" ] && err 1 "${N1_COLOR}No such rcconf for: ${N2_COLOR}$jname${N0_COLOR}"
 			[ -f ${jailrcconfdir}/rc.conf_${jname} ] && . ${jailrcconfdir}/rc.conf_${jname}
-			[ -f $jailsysdir/$jname/rc.conf_${jname} ] && . $jailsysdir/$jname/rc.conf_${jname}
+			[ -f ${jailsysdir}/${jname}/rc.conf_${jname} ] && . ${jailsysdir}/${jname}/rc.conf_${jname}
 			eval data=\"\$data\"
 			[ -n "${data}" -a -d "${data}" ] || err 1 "No such data directory $data."
 			echo "___NCSTART_DATA=1" >> ${out}
@@ -279,7 +285,9 @@ EOF
 
 			if [ -n "${filestats}" -a -r "${filestats}" ]; then
 				. ${filestats}
-				imghelper --start ___NCSTART_HEADER=1 --end ___NCSTOP_HEADER=1 --infile ${out} --param=img_flat_size --newval="${img_flat_size}"
+				img_flat_size_summary="${img_flat_size}"
+			else
+				img_flat_size_summary=0
 			fi
 
 			# additional loop to check for symlink and zvol
@@ -289,12 +297,25 @@ EOF
 					if is_getzvol ${i}; then
 						_zvol_name=$( /usr/bin/basename ${i} | /usr/bin/sed 's:\.vhd::g' )
 						echo "___NCSTART_ZVOL_${_zvol_name}=1" >> ${out}
-						/bin/dd if=/dev/zvol/${is_zvol} | /usr/bin/gzip --fast -c >> ${out}
+						if [ -n "${filestats}" ]; then
+							/bin/dd if=/dev/zvol/${is_zvol} | ${miscdir}/cbsdtee -f ${filestats} | /usr/bin/gzip --fast -c >> ${out}
+							. ${filestats}
+							img_flat_size_summary=$(( img_flat_size_summary + img_flat_size ))
+						else
+							/bin/dd if=/dev/zvol/${is_zvol} | /usr/bin/gzip --fast -c >> ${out}
+						fi
 						echo >> ${out}
 						echo "___NCSTOP_ZVOL_${_zvol_name}=1" >> ${out}
 					fi
 				done
 			fi
+
+			# update flat_size in image
+			if [ -n "${filestats}" -a -r "${filestats}" ]; then
+				. ${filestats}
+				imghelper --start ___NCSTART_HEADER=1 --end ___NCSTOP_HEADER=1 --infile ${out} --param=img_flat_size --newval="${img_flat_size_summary}"
+			fi
+
 
 			;;
 	esac
@@ -312,9 +333,9 @@ case "${mode}" in
 		;;
 	pack)
 		. ${jrcconf}
-		[ $? -eq 1 ] && err 1 "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
-		[ ${jid} -ne 0 -a "${emulator}" = "bhyve" ] && err 1 "${MAGENTA}VM is online${NORMAL}"
-		[ -z "$out" ] && err 1 "${MAGENTA}out=tofile is mandatory${NORMAL}"
+		[ $? -eq 1 ] && err 1 "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
+		[ ${jid} -ne 0 -a "${emulator}" = "bhyve" ] && err 1 "${N1_COLOR}VM is online${N0_COLOR}"
+		[ -z "$out" ] && err 1 "${N1_COLOR}out=tofile is mandatory${N0_COLOR}"
 		packme
 		;;
 esac

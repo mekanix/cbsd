@@ -13,26 +13,24 @@ header=0 don't print header\n\
 display= list by comma for column. Default: jname,p9path,p9device\n"
 
 . ${subr}
+
+. ${distdir}/virtual.subr
+
+. ${cbsdinit}
 . ${system}
-. ${strings}
-. ${tools}
-
-. ${workdir}/virtual.subr
-
-init $*
 
 [ -z "${display}" ] && display="jname,p9path,p9device"
 
 #remove commas for loop action on header
-mydisplay=$(echo ${display} |/usr/bin/tr ',' '  ')
+mydisplay=$( echo ${display} | /usr/bin/tr ',' '  ')
 
 # upper for header
-myheader=$(echo ${mydisplay} |/usr/bin/tr '[:lower:]' '[:upper:]')
+myheader=$( echo ${mydisplay} | /usr/bin/tr '[:lower:]' '[:upper:]' )
 
 show_header()
 {
-	local _header="${BOLD}${myheader}${NORMAL}"
-	[ ${header} -ne 0 ] && $ECHO ${_header}
+	local _header="${H1_COLOR}${BOLD}${myheader}${N0_COLOR}"
+	[ ${header} -ne 0 ] && ${ECHO} ${_header}
 }
 
 # if $1 = "Unregister" then overwrite status to "Unregister"
@@ -49,7 +47,7 @@ populate_output_data()
 		[ -z "${_val}" ] && return 0
 
 		if [ -z "${_status}" ]; then
-			_status="${NORMAL}${_val}"
+			_status="${N0_COLOR}${_val}"
 		else
 			_status="${_status} ${_val}"
 		fi
@@ -73,9 +71,11 @@ show_jaildata_from_sql()
 
 	_status=
 	_sql="SELECT p9path,p9device FROM p9shares"
-	cbsdsql ${sqlfile} ${_sql}| while read p9path p9device; do
+	cbsdsqlro ${sqlfile} ${_sql}| while read p9path p9device; do
 		populate_output_data
-		${ECHO} ${_status}
+		printf "${N2_COLOR}"
+		printf "${_status}"
+		printf "${N0_COLOR}\n"
 	done
 }
 
@@ -86,7 +86,7 @@ share_exist()
 {
 	local _tmp
 
-	_tmp=$( cbsdsql ${mydb} SELECT p9path FROM p9shares WHERE p9device=\"${p9device}\" 2>/dev/null )
+	_tmp=$( cbsdsqlro ${mydb} SELECT p9path FROM p9shares WHERE p9device=\"${p9device}\" 2>/dev/null )
 
 	if [ -n "${_tmp}" ]; then
 		return 0
@@ -119,32 +119,32 @@ case "${mode}" in
 		err 0 ""
 		;;
 	attach)
-		[ -z "${jname}" ] && err 1 "${MAGENTA}Please set ${GREEN}jname=${NORMAL}"
-		[ -z "${p9path}" -o -z "${p9device}" ] && err 1 "${GREEN}p9path= ${MAGENTA}and ${GREEN}p9device=${MAGENTA} must be set${NORMAL}"
+		[ -z "${jname}" ] && err 1 "${N1_COLOR}Please set ${N2_COLOR}jname=${N0_COLOR}"
+		[ -z "${p9path}" -o -z "${p9device}" ] && err 1 "${N2_COLOR}p9path= ${N1_COLOR}and ${N2_COLOR}p9device=${N1_COLOR} must be set${N0_COLOR}"
 		mydb="${jailsysdir}/${jname}/local.sqlite"
 
 		if share_exist; then
-			err 1 "${MAGENTA}Share with p9device=${GREEN}${p9device}${MAGENTA} already exist${NORMAL}"
+			err 1 "${N1_COLOR}Share with p9device=${N2_COLOR}${p9device}${N1_COLOR} already exist${N0_COLOR}"
 		fi
 
-		[ ! -d ${p9path} ] && err 1 "${MAGENTA}Path not exist: ${GREEN}${p9path}${NORMAL}"
+		[ ! -d ${p9path} ] && err 1 "${N1_COLOR}Path not exist: ${N2_COLOR}${p9path}${N0_COLOR}"
 
-		cbsdsql ${mydb} "INSERT INTO p9shares ( p9path, p9device ) VALUES ( \"${p9path}\", \"${p9device}\" )"
-		err 0 "${MAGENTA}Attached${NORMAL}"
+		cbsdsqlrw ${mydb} "INSERT INTO p9shares ( p9path, p9device ) VALUES ( \"${p9path}\", \"${p9device}\" )"
+		err 0 "${N1_COLOR}Attached${N0_COLOR}"
 		;;
 	detach)
-		[ -z "${jname}" ] && err 1 "${MAGENTA}Please set ${GREEN}jname=${NORMAL}"
-		[ -z "${p9device}" ] && err 1 "${GREEN}${GREEN}p9device=${MAGENTA} must be set${NORMAL}"
+		[ -z "${jname}" ] && err 1 "${N1_COLOR}Please set ${N2_COLOR}jname=${N0_COLOR}"
+		[ -z "${p9device}" ] && err 1 "${N2_COLOR}${N2_COLOR}p9device=${N1_COLOR} must be set${N0_COLOR}"
 		mydb="${jailsysdir}/${jname}/local.sqlite"
 
 		if share_exist; then
-			cbsdsql ${mydb} "DELETE FROM p9shares WHERE p9device=\"${p9device}\""
+			cbsdsqlrw ${mydb} "DELETE FROM p9shares WHERE p9device=\"${p9device}\""
 		else
-			err 1 "${MAGENTA}Share with p9device=${GREEN}${p9device}${MAGENTA} not exist${NORMAL}"
+			err 1 "${N1_COLOR}Share with p9device=${N2_COLOR}${p9device}${N1_COLOR} not exist${N0_COLOR}"
 		fi
-		cbsdsql ${mydb} "DELETE FROM p9shares WHERE p9device=\"${p9device}\""
-		err 0 "${MAGENTA}Dettached${NORMAL}"
+		cbsdsqlrw ${mydb} "DELETE FROM p9shares WHERE p9device=\"${p9device}\""
+		err 0 "${N1_COLOR}Dettached${N0_COLOR}"
 		;;
 	*)
-		err 1 "${MAGENTA}Unknown mode: ${GREEN}${mode}${NORMAL}"
+		err 1 "${N1_COLOR}Unknown mode: ${N2_COLOR}${mode}${N0_COLOR}"
 esac

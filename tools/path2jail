@@ -6,18 +6,16 @@ MYDESC="Make jail from specified root path"
 CBSDMODULE="jail"
 
 . ${subr}
-init $*
 
-. ${tools}
-. ${settingstui}
+. ${cbsdinit}
 
-[ ! -r "${root}" ] && err 1 "${MAGENTA}No jconf: ${GREEN}${root}${NORMAL}"
+[ ! -r "${root}" ] && err 1 "${N1_COLOR}No jconf: ${N2_COLOR}${root}${N0_COLOR}"
 
 if [ -z "${jname}" ]; then
 	jname=$( freejname default_jailname=${default_jailname} )
 fi
 
-[ -z "${jname}" ] && err 1 "${MAGENTA}Empty jname${NORMAL}"
+[ -z "${jname}" ] && err 1 "${N1_COLOR}Empty jname${N0_COLOR}"
 
 JAILRCCONF="${jailrcconfdir}/rc.conf_${jname}"
 
@@ -73,7 +71,10 @@ allow_procfs="1";
 allow_reserved_port="1";
 allow_tmpfs="1";
 allow_read_msgbuf="0";
-allow_sysvipc="1";
+allow_vmm="0";
+sysvsem="new";
+sysvshm="new";
+sysvmsg="new";
 allow_zfs="0";
 cpuset="0";
 emulator="jail";

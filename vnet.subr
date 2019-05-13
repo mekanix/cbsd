@@ -10,7 +10,7 @@ MAC_PREFIX="02:00:c0"
 init_vnet()
 {
 	if ! /sbin/kldstat -qm if_bridge; then
-		${ECHO} "${MAGENTA}Loading if_bridge.ko...${NORMAL}"
+		${ECHO} "${N1_COLOR}Loading if_bridge.ko...${N0_COLOR}"
 		/sbin/kldload if_bridge
 	fi
 
@@ -155,9 +155,14 @@ get_my_device()
 	[ -z "${_firstfree}" ] && echo "Cant find first available ${_dev}" && return 1
 
 	if [ "${_dev}" = "bridge" ]; then
+		cbsdlogger NOTICE ${CBSD_APP}: get_my_device: /sbin/ifconfig ${_firstfree} create addm ${_desc} up description ${_desc}
 		_test=$( /sbin/ifconfig ${_firstfree} create addm ${_desc} up description ${_desc} 2>&1 )
 		_ret=$?
-		[ ${_ret} -ne 0 ] && echo "${_test}" && return 1
+		if [ ${_ret} -ne 0 ]; then
+			cbsdlogger NOTICE ${CBSD_APP}: get_my_device: error, ret: ${_ret}: ${_test}
+			echo "${_test}"
+			return 1
+		fi
 	fi
 	echo "${_firstfree}"
 }
@@ -182,14 +187,14 @@ get_my_epair()
 	local macb=
 
 	if [ -r ${jailsysdir}/${jname}/local.sqlite ]; then
-		macb=$( cbsdsql ${jailsysdir}/${jname}/local.sqlite SELECT nic_hwaddr FROM jailnic )
+		macb=$( cbsdsqlro ${jailsysdir}/${jname}/local.sqlite SELECT nic_hwaddr FROM jailnic )
 	else
 		/usr/local/bin/cbsd ${miscdir}/updatesql ${jailsysdir}/${jname}/local.sqlite ${distdir}/share/local-jailnic.schema jailnic
 	fi
 
 	if [ -z "${macb}" -o "${macb}" = "0" ]; then
 		macb=$( mac_gen 02:ff:f0 )
-		cbsdsql ${jailsysdir}/${jname}/local.sqlite "INSERT INTO jailnic ( name,nic_order,nic_slot,nic_parent,nic_hwaddr ) VALUES ( \"epairb\",\"0\",\"0\",\"auto\",\"${macb}\" )"
+		cbsdsqlrw ${jailsysdir}/${jname}/local.sqlite "INSERT INTO jailnic ( name,nic_order,nic_slot,nic_parent,nic_hwaddr ) VALUES ( \"epairb\",\"0\",\"0\",\"auto\",\"${macb}\" )"
 	fi
 
 	# flush stdout
@@ -279,6 +284,7 @@ get_vm_uplink_interface()
 {
 	local tmp_nic_parent
 	local _get_by_route=0	# get upink by IPv4 route ?
+	local _sw _pos _arg_len _pref _vale_arg
 
 	if [ -n "${1}" ]; then
 		tmp_nic_parent="${1}"
@@ -288,12 +294,23 @@ get_vm_uplink_interface()
 
 	case ${tmp_nic_parent} in
 		vale_*)
-			# valeid=$( cbsdsql local SELECT idx FROM vale WHERE name=\"${nic_parent}\"  )
-			valeid=$( cbsdsql local SELECT idx FROM vale WHERE name=\"psw1\"  )
-			[ -z "${valeid}" ] && err 1 "errmsg=\"compile_nic_args: can't determine vale nic for: ${nic_parent}\""
+			strpos --str="${tmp_nic_parent}" --search="_"
+			_pos=$?
+			if [ ${_pos} -eq 0 ]; then
+				# not vale_XXX form
+			else
+				_arg_len=$( strlen ${tmp_nic_parent} )
+				_pref=$(( _arg_len - _pos ))
+				_vale_arg=$( substr --pos=0 --len=${_pos} --str="${tmp_nic_parent}" )
+				_sw=$( substr --pos=$(( ${_pos} +2 )) --len=${_pref} --str="${tmp_nic_parent}" )
+			fi
+			# valeid=$( cbsdsqlro local SELECT idx FROM vale WHERE name=\"${nic_parent}\"  )
+			valeid=$( cbsdsqlro local SELECT idx FROM vale WHERE name=\"${_sw}\"  )
+			[ -z "${valeid}" ] && log_err 1 "errmsg=\"compile_nic_args: can't determine vale nic for: ${nic_parent}\""
 			mytap="vale${valeid}:${jname}"
 #			net_emul="e1000"
 			net_emul="virtio-net"
+			cbsdlogger NOTICE ${CBSD_APP}: get_vm_uplink_interface: vale id: ${valeid} -> ${mytap}
 			;;
 		*)
 			case ${ip4_addr} in
@@ -317,7 +334,8 @@ get_vm_uplink_interface()
 				0)
 					# when ip=0 and interface=auto we must use default interface for upstream
 					if [ "${tmp_nic_parent}" = "0" -o "${tmp_nic_parent}" = "auto" ]; then
-						. ${workdir}/initenv.subr
+						cbsdlogger NOTICE ${CBSD_APP}: get_vm_uplink_interface: get_by_route: ${_get_by_route}, tmp_nic_parent: ${tmp_nic_parent}, use default iface
+						. ${distdir}/initenv.subr
 						update_netinfo
 							if [ "${node_ip6_active}" = "1" ]; then
 							interface="${CBSD_UPLINK_IFACE6}"
@@ -357,7 +375,7 @@ jail_remove_nic()
 	local id="${1}"; shift
 	[ -z "${jname}" -o -z "${id}" ] && return 0
 
-	cbsdsql ${jailsysdir}/${jname}/local.sqlite DELETE FROM jailnic WHERE id=\"${id}\"
+	cbsdsqlrw ${jailsysdir}/${jname}/local.sqlite DELETE FROM jailnic WHERE id=\"${id}\"
 
 	return 0
 }
@@ -389,6 +407,40 @@ is_nic_exist()
 	done
 
 	return 1
+}
+
+# function search for nic in system by iface description
+# return 0 and print to stdout nic if found
+# return 1 when not
+#   example:
+#    if ttt=$( get_nic_by_descr freebsd1-nic0 ); then
+#	echo "Found: $ttt"
+#    fi
+get_nic_by_descr()
+{
+	local _iface _mytap _i _list=
+
+	_iface=$( /sbin/ifconfig -l )
+	_mytap=
+
+	for _i in ${_iface}; do
+		_desc=$( /sbin/ifconfig ${_i} 2>/dev/null | /usr/bin/awk '/description:/{print $2}' )
+		[ -z "${_desc}" ] && continue
+		if [ "${_desc}" = "${1}" ]; then
+			if [ -n "${_list}" ]; then
+				_list="${_list} ${_i}"
+			else
+				_list="${_i}"
+			fi
+		fi
+	done
+
+	if [ -n "${_list}" ]; then
+		printf "${_list}"
+		return 0
+	else
+		return 1
+	fi
 }
 
 ###

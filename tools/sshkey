@@ -1,6 +1,6 @@
 #!/usr/local/bin/cbsd
 #v11.0.10
-globalconf="${workdir}/cbsd.conf";
+globalconf="${distdir}/cbsd.conf";
 MYARG=""
 MYOPTARG="private_key public_key renew"
 MYDESC="Manage node ssh key: replace or update new pair in CBSD .ssh directory"
@@ -9,19 +9,19 @@ public_key - specify full path to authorized_keys to install as node public key\
 renew - when set to 1, remove old rsa/pub key pair and generate new\n"
 
 . ${subr}
+
+. ${cbsdinit}
+
 . ${system}
-. ${tools}
 . ${initenv}
 
-init $*
-
 ### MAIN
-[ -z "${private_key}" -a -z "${public_key}" -a -z "${renew}" ] && err 1 "${MAGENTA}Use ${GREEN}private_key=${MAGENTA} or ${GREEN}public_key=${MAGENTA} or ${GREEN}renew=1${MAGENTA} to replace old files${NORMAL}"
+[ -z "${private_key}" -a -z "${public_key}" -a -z "${renew}" ] && err 1 "${N1_COLOR}Use ${N2_COLOR}private_key=${N1_COLOR} or ${N2_COLOR}public_key=${N1_COLOR} or ${N2_COLOR}renew=1${N1_COLOR} to replace old files${N0_COLOR}"
 [ -z "${renew}" ] && renew=0
 
 if [ ${renew} -eq 1 ]; then
 	install_sshkey -r
-	err 0 "${MAGENTA}Updated${NORMAL}"
+	err 0 "${N1_COLOR}Updated${N0_COLOR}"
 fi
 
 [ -n "${private_key}" ] && install_sshkey -p ${private_key}

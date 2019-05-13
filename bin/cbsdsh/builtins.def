@@ -94,12 +94,14 @@ unaliascmd	unalias
 unsetcmd	-s unset
 waitcmd		wait
 wordexpcmd	wordexp
-sqlitecmd	cbsdsql
+sqlitecmdro	cbsdsqlro
+sqlitecmdrw	cbsdsqlrw
 aboutcmd	about
 versioncmd	version
 is_numbercmd	is_number
 substrcmd	substr
 strposcmd	strpos
+roundupcmd	roundup
 spawncmd	spawntask
 cbsd_pwaitcmd	cbsd_pwait
 strlencmd	strlen

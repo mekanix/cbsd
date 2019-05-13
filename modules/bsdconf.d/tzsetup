@@ -1,6 +1,6 @@
 #!/usr/local/bin/cbsd
 #v11.0.0
-globalconf="${workdir}/cbsd.conf"
+globalconf="${distdir}/cbsd.conf"
 CBSDMODULE="bsdconf"
 MYARG=""
 MYOPTARG="jname"
@@ -9,9 +9,10 @@ ADDHELP="jname= work in with jail\n"
 EXTHELP="modules/bsdconf.d.html"
 
 . ${subr}
-. ${strings}
+
+. ${cbsdinit}
+
 . ${system}
-init $*
 
 #defines
 _MYDIR=$( dirname `realpath $0` )
@@ -23,7 +24,7 @@ exec_cmd="/usr/sbin/tzsetup"
 ## MAIN ##
 if [ -n "${jname}" ]; then
 	. ${jrcconf}
-	[ $? -eq 1 ] && err 1 "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
+	[ $? -eq 1 ] && err 1 "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
 	[ ${jid} -eq 0 ] && err 1 "Jail is not running"
 else
 	data="/"

@@ -4,18 +4,18 @@
 . ${strings}
 . ${tools}
 
-[ ! -f "${sharedir}/jail-arg" ] && err 1 "No such jail-arg skel"
-. ${sharedir}/jail-arg
+[ ! -f "${distsharedir}/jail-arg" ] && err 1 "No such jail-arg skel"
+. ${distsharedir}/jail-arg
 CBSDMODULE="jail"
 MYDESC="Ncurses based setup for jail-arg"
 MYARG="jname"
 MYOPTARG="${JARG} outfile"
 
-init $*
+. ${cbsdinit}
 
 . ${settingstui}
+. ${distdir}/settings-tui-jail.subr
 . ${dialog}
-
 
 commit()
 {
@@ -38,7 +38,7 @@ commit()
 	done
 
 	if [ "${_oldjname}" != "${_newjname}" -a -n "${_newjname}" ]; then
-		${ECHO} "jname: ${MAGENTA}${_newjname}${NORMAL}"
+		${ECHO} "jname: ${N1_COLOR}${_newjname}${N0_COLOR}"
 		jrename old=${_oldjname} new=${_newjname}
 		jname="${_newjname}"
 	fi
@@ -74,10 +74,10 @@ dialog_menu_main()
 
 	local i _mytest skip
 
-	local _checkbox="baserw astart applytpl floatresolv mount_ports mount_src vnet mkhostsfile \
-mount_devfs allow_mount allow_devfs allow_nullfs allow_fusefs mount_fdescfs allow_fdescfs allow_dying allow_procfs \
-allow_tmpfs allow_zfs allow_kmem mount_kernel mount_obj protected hidden allow_reserved_ports persist \
-allow_raw_sockets allow_read_msgbuf"
+	local _checkbox="allow_devfs allow_dying allow_fdescfs allow_fusefs allow_kmem allow_mount allow_nullfs allow_procfs \
+allow_raw_sockets allow_read_msgbuf allow_reserved_ports allow_tmpfs allow_unprivileged_proc_debug allow_vmm allow_zfs \
+applytpl astart baserw floatresolv hidden mkhostsfile mount_devfs mount_fdescfs mount_kernel mount_obj mount_ports mount_src \
+persist protected vnet"
 
 	f_dialog_default_fetch defaultitem
 
@@ -100,6 +100,9 @@ allow_raw_sockets allow_read_msgbuf"
 		# For FreeBSD 11.1+ only
 		if [ "${i}" = "allow_reserved_ports" ]; then
 			[ ${freebsdhostversion} -lt 1100513 ] && continue
+		fi
+		if [ "${i}" = "allow_unprivileged_proc_debug" ]; then
+			[ ${freebsdhostversion} -lt 1200085 ] && continue
 		fi
 
 		# For FreeBSD 11.2+ only
@@ -163,20 +166,20 @@ zero_profile="jail-freebsd-default.conf"
 #defaults
 
 . ${buildconf}
-readconf ${zero_profile}
 
+readconf ${zero_profile}
 # re-read profile for init global_profile_file variable
 get_construct_profile ${default_profile}
 [ -z "${profile}" -a -n "${jail_profile}" ] && profile="${jail_profile}"
 
 . ${jrcconf}
-[ $? -eq 1 ] && err 1 "${MAGENTA}No such jail: ${GREEN}${jname}${NORMAL}"
+[ $? -eq 1 ] && err 1 "${N1_COLOR}No such jail: ${N2_COLOR}${jname}${N0_COLOR}"
 
 shift #skip for jname
 
 if [ ${jid} -ne 0 ]; then
 	# Command for modifying on-the fly here:
-	JARG="ip4_addr cpuset astart exec_consolelog mount_src mount_ports mount_kernel allow_mount allow_nullfs allow_fusefs allow_tmpfs allow_procfs allow_sysvipc devfs_ruleset jdomain b_order applytpl protected hidden allow_raw_sockets allow_read_msgbuf"
+	JARG="ip4_addr cpuset astart exec_consolelog mount_src mount_ports mount_kernel allow_mount allow_nullfs allow_fusefs allow_tmpfs allow_procfs devfs_ruleset jdomain b_order applytpl protected hidden allow_raw_sockets allow_read_msgbuf allow_vmm sysvsem sysvshm sysvmsg"
 else
 	JARG="$@"
 fi
@@ -214,19 +217,19 @@ while [ 1 ]; do
 		"jrctl")
 			/usr/local/bin/cbsd jrctl-tui jname="${jname}"
 			;;
-		"b_order")
-			/usr/local/bin/cbsd jorder-tui jname="${jname}"
-			b_order=$( cbsdsql local "SELECT b_order FROM jails WHERE jname=\"${jname}\"" 2>/dev/null )
+		b_order|order)
+			jorder-tui jname="${jname}"
+			b_order=$( cbsdsqlro local "SELECT b_order FROM jails WHERE jname=\"${jname}\"" 2>/dev/null )
 			;;
 		baserw|astart|applytpl|floatresolv|mount_ports|mount_src|vnet|mkhostsfile|persist)
 			invert_checkbox ${mychoice}
 			continue
 			;;
-		mount_devfs|allow_mount|allow_devfs|allow_nullfs|allow_fusefs|mount_fdescfs|allow_fdescfs|allow_dying|allow_procfs|protected|hidden|allow_reserved_ports|allow_raw_sockets)
+		mount_devfs|allow_mount|allow_devfs|allow_nullfs|allow_fusefs|mount_fdescfs|allow_fdescfs|allow_dying|allow_procfs|protected|hidden|allow_reserved_ports|allow_raw_sockets|allow_unprivileged_proc_debug)
 			invert_checkbox ${mychoice}
 			continue
 			;;
-		allow_tmpfs|allow_zfs|allow_kmem|mount_kernel|mount_obj|allow_read_msgbuf)
+		allow_tmpfs|allow_zfs|allow_kmem|mount_kernel|mount_obj|allow_read_msgbuf|allow_vmm)
 			invert_checkbox ${mychoice}
 			continue
 			;;

@@ -1,6 +1,6 @@
 #!/usr/local/bin/cbsd
 #v11.1.12
-globalconf="${workdir}/cbsd.conf";
+globalconf="${distdir}/cbsd.conf";
 CBSDMODULE="xen"
 MYARG="jname"
 MYOPTARG="mode"
@@ -18,18 +18,18 @@ set +e
 
 [ -z "${1}" ] && select_jail_by_list -s "List of local VMs" -e xls -a "Off|On"
 
-init $*
+. ${cbsdinit}
 
 shift  # todo: jname and cmd may have reverse order
 
 . ${jrcconf}
-[ $? -eq 1 ] && err 1 "${MAGENTA}No such vm: ${GREEN}${jname}${NORMAL}"
-[ "${emulator}" != "xen" ] && err 1 "${MAGENTA}Only for xen type VMs${NORMAL}"
+[ $? -eq 1 ] && err 1 "${N1_COLOR}No such vm: ${N2_COLOR}${jname}${N0_COLOR}"
+[ "${emulator}" != "xen" ] && err 1 "${N1_COLOR}Only for xen type VMs${N0_COLOR}"
 
 CMDDIR="${jailsysdir}/${jname}/bin/"
 
 if [ "${mode}" = "list" ]; then
-	${ECHO} "${MAGENTA}Configure command available: ${GREEN}xconfig jname=${jname} <cmd>:${NORMAL}"
+	${ECHO} "${N1_COLOR}Configure command available: ${N2_COLOR}xconfig jname=${jname} <cmd>:${N0_COLOR}"
 	[ -d "${CMDDIR}" ] && find ${CMDDIR} -type f -depth 1 -maxdepth 1 -exec basename {} \;
 	exit 0
 fi
@@ -41,7 +41,8 @@ cfgargs="$@"
 
 if [ -z "${cmd}" ]; then
 	xsetup-tui jname=${jname} vm_ram vm_cpus astart ip4_addr vm_boot vm_iso_path vm_vnc_port protected hidden \
-	cd_vnc_wait xen_vnc_resolution xen_vnc_tcp_bind vnc_password
+	cd_vnc_wait xen_vnc_resolution xen_vnc_tcp_bind vnc_password on_poweroff on_reboot on_crash \
+	spice_default xen_spice_tcp_bind xen_spice_resolution spice_password xen_soundhw
 elif [ -f "${CMDDIR}${cmd}" ]; then
 	. ${CMDDIR}${cmd}
 	myconf ${cfgargs}
